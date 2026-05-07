@@ -3,7 +3,6 @@ import asyncio
 import sqlite3
 import time
 import random
-from datetime import datetime
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, ContextTypes
@@ -122,7 +121,7 @@ async def donate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mentions = [f"<a href='tg://user?id={u}'>💰</a>" for u in users[:50]]
     await update.message.reply_text("💰 НЕ ЗАБУДЬ ЗАДОНАТИТИ!\n" + " ".join(mentions), parse_mode=ParseMode.HTML)
 
-async def main():
+def main():
     app = Application.builder().token(TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
@@ -136,7 +135,7 @@ async def main():
     app.add_handler(CommandHandler("donate", donate))
     
     print("✅ Бот запущен!")
-    await app.run_polling()
+    app.run_polling()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
