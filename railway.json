@@ -1,0 +1,14 @@
+{
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "numReplicas": 1,
+    "restartPolicyType": "ALWAYS"
+  },
+  "workers": {
+    "bot": {
+      "start": "python bot.py"
+    }
+  }
+}
