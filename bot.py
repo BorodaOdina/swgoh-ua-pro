@@ -45,7 +45,7 @@ def get_inactive(days):
     return [r[0] for r in cur.execute("SELECT id FROM users WHERE last_active < ?", (limit,))]
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🇺🇦 SWGOH UA PRO активний. Використай /реєстрація")
+    await update.message.reply_text("🇺🇦 SWGOH UA PRO активний. Використай /register")
 
 async def register(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
@@ -106,13 +106,13 @@ async def post_init(app):
 
 app = Application.builder().token(TOKEN).build()
 app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("реєстрація", register))
-app.add_handler(CommandHandler("рейд", raid))
-app.add_handler(CommandHandler("тв", tw))
-app.add_handler(CommandHandler("тб", tb))
-app.add_handler(CommandHandler("усі", all_users))
-app.add_handler(CommandHandler("активні", active))
-app.add_handler(CommandHandler("офіцери", officers))
+app.add_handler(CommandHandler("register", register))
+app.add_handler(CommandHandler("raid", raid))
+app.add_handler(CommandHandler("tw", tw))
+app.add_handler(CommandHandler("tb", tb))
+app.add_handler(CommandHandler("all", all_users))
+app.add_handler(CommandHandler("active", active))
+app.add_handler(CommandHandler("officers", officers))
 app.add_handler(CommandHandler("makeofficer", make_officer))
 app.post_init = post_init
 app.run_polling()
