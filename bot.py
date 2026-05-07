@@ -57,9 +57,10 @@ def get_inactive_users(days):
     cur.execute("SELECT id, username, last_active FROM users WHERE last_active < ?", (limit,))
     return cur.fetchall()
 
-# ========== КОМАНДЫ ==========
-def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    update.message.reply_text(
+# ========== КОМАНДЫ (ВСЕ async) ==========
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
         "🤖 SWGOH UA GUILD BOT\n\n"
         "👤 ОСНОВНІ КОМАНДИ:\n"
         "/register - реєстрація\n"
@@ -79,19 +80,19 @@ def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/officers - список офіцерів"
     )
 
-def register(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def register(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     username = update.effective_user.username or update.effective_user.first_name
     add_user(uid, username)
     update_last_active(uid)
-    update.message.reply_text("✅ Ти зареєстрований у гільдії!")
+    await update.message.reply_text("✅ Ти зареєстрований у гільдії!")
 
-def mystat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def mystat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     cur.execute("SELECT role, last_active FROM users WHERE id=?", (uid,))
     row = cur.fetchone()
     if not row:
-        update.message.reply_text("❌ Спочатку /register")
+        await update.message.reply_text("❌ Спочатку /register")
         return
     role, last = row
     diff = now() - last
@@ -101,56 +102,56 @@ def mystat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         time_str = f"{diff // 3600} год тому"
     else:
         time_str = f"{diff // 86400} днів тому"
-    update.message.reply_text(f"📊 ТВОЯ СТАТИСТИКА\n\nРоль: {role}\nОстання активність: {time_str}")
+    await update.message.reply_text(f"📊 ТВОЯ СТАТИСТИКА\n\nРоль: {role}\nОстання активність: {time_str}")
 
 # Команди офіцерів
-def raid(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def raid(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_officer(update.effective_user.id):
-        update.message.reply_text("❌ Тільки офіцери")
+        await update.message.reply_text("❌ Тільки офіцери")
         return
     users = get_all_users()
     mentions = [f"<a href='tg://user?id={u}'>⚔️</a>" for u in users[:50]]
-    update.message.reply_text("🚨 РЕЙД ПОЧАВСЯ!\n" + " ".join(mentions), parse_mode=ParseMode.HTML)
+    await update.message.reply_text("🚨 РЕЙД ПОЧАВСЯ!\n" + " ".join(mentions), parse_mode=ParseMode.HTML)
 
-def tw(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def tw(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_officer(update.effective_user.id):
-        update.message.reply_text("❌ Тільки офіцери")
+        await update.message.reply_text("❌ Тільки офіцери")
         return
     users = get_all_users()
     mentions = [f"<a href='tg://user?id={u}'>⚔️</a>" for u in users[:50]]
-    update.message.reply_text("⚔️ TERRITORY WAR!\n" + " ".join(mentions), parse_mode=ParseMode.HTML)
+    await update.message.reply_text("⚔️ TERRITORY WAR!\n" + " ".join(mentions), parse_mode=ParseMode.HTML)
 
-def tb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def tb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_officer(update.effective_user.id):
-        update.message.reply_text("❌ Тільки офіцери")
+        await update.message.reply_text("❌ Тільки офіцери")
         return
     users = get_all_users()
     mentions = [f"<a href='tg://user?id={u}'>🌌</a>" for u in users[:50]]
-    update.message.reply_text("🌌 TERRITORY BATTLE!\n" + " ".join(mentions), parse_mode=ParseMode.HTML)
+    await update.message.reply_text("🌌 TERRITORY BATTLE!\n" + " ".join(mentions), parse_mode=ParseMode.HTML)
 
-def all_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def all_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_officer(update.effective_user.id):
-        update.message.reply_text("❌ Тільки офіцери")
+        await update.message.reply_text("❌ Тільки офіцери")
         return
     users = get_all_users()
     mentions = [f"<a href='tg://user?id={u}'>👤</a>" for u in users[:30]]
-    update.message.reply_text("🔥 УВАГА ГІЛЬДІЇ!\n" + " ".join(mentions), parse_mode=ParseMode.HTML)
+    await update.message.reply_text("🔥 УВАГА ГІЛЬДІЇ!\n" + " ".join(mentions), parse_mode=ParseMode.HTML)
 
-def donate(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def donate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_officer(update.effective_user.id):
-        update.message.reply_text("❌ Тільки офіцери")
+        await update.message.reply_text("❌ Тільки офіцери")
         return
     users = get_all_users()
     mentions = [f"<a href='tg://user?id={u}'>💰</a>" for u in users[:50]]
-    update.message.reply_text("💰 НЕ ЗАБУДЬ ЗАДОНАТИТИ ОЧКИ ГІЛЬДІЇ!\n" + " ".join(mentions), parse_mode=ParseMode.HTML)
+    await update.message.reply_text("💰 НЕ ЗАБУДЬ ЗАДОНАТИТИ ОЧКИ ГІЛЬДІЇ!\n" + " ".join(mentions), parse_mode=ParseMode.HTML)
 
-def make_officer(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def make_officer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_officer(update.effective_user.id):
-        update.message.reply_text("❌ Тільки офіцери можуть призначати офіцерів")
+        await update.message.reply_text("❌ Тільки офіцери можуть призначати офіцерів")
         return
     
     if not context.args:
-        update.message.reply_text("❌ Використання: /makeofficer @username або /makeofficer telegram_id")
+        await update.message.reply_text("❌ Використання: /makeofficer @username або /makeofficer telegram_id")
         return
     
     target = context.args[0]
@@ -159,29 +160,29 @@ def make_officer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         cur.execute("SELECT id FROM users WHERE username LIKE ?", (f"%{username}%",))
         row = cur.fetchone()
         if not row:
-            update.message.reply_text("❌ Користувача не знайдено. Спочатку він має зареєструватись через /register")
+            await update.message.reply_text("❌ Користувача не знайдено. Спочатку він має зареєструватись через /register")
             return
         target_id = row[0]
     else:
         try:
             target_id = int(target)
         except ValueError:
-            update.message.reply_text("❌ Невірний формат. Використовуй @username або ID")
+            await update.message.reply_text("❌ Невірний формат. Використовуй @username або ID")
             return
     
     set_role(target_id, "officer")
-    update.message.reply_text(f"👑 Користувач призначений офіцером!")
+    await update.message.reply_text(f"👑 Користувач призначений офіцером!")
 
-def inactive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def inactive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_officer(update.effective_user.id):
-        update.message.reply_text("❌ Тільки офіцери")
+        await update.message.reply_text("❌ Тільки офіцери")
         return
     
     days = int(context.args[0]) if context.args and context.args[0].isdigit() else 7
     inactive_users = get_inactive_users(days)
     
     if not inactive_users:
-        update.message.reply_text(f"ℹ️ Немає неактивних гравців за {days} днів")
+        await update.message.reply_text(f"ℹ️ Немає неактивних гравців за {days} днів")
         return
     
     text = f"💤 НЕАКТИВНІ {days}+ ДНІВ:\n\n"
@@ -189,10 +190,10 @@ def inactive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         inactive_days = (now() - last_active) // 86400
         text += f"• {username or uid}: {inactive_days} днів\n"
     
-    update.message.reply_text(text)
+    await update.message.reply_text(text)
 
 # Статистика
-def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     total = len(get_all_users())
     officers = len(get_role_users("officer"))
     cur.execute("SELECT COUNT(*) FROM users WHERE last_active > ?", (now() - 86400,))
@@ -200,7 +201,7 @@ def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cur.execute("SELECT COUNT(*) FROM users WHERE ally_code IS NOT NULL")
     linked = cur.fetchone()[0]
     
-    update.message.reply_text(
+    await update.message.reply_text(
         f"📊 СТАТИСТИКА ГІЛЬДІЇ\n\n"
         f"👥 Всього: {total}\n"
         f"👑 Офіцерів: {officers}\n"
@@ -208,27 +209,27 @@ def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🔗 Прив'язали Ally Code: {linked}"
     )
 
-def active(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def active(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cur.execute("SELECT id FROM users WHERE last_active > ?", (now() - 86400,))
     users = [row[0] for row in cur.fetchall()]
     
     if not users:
-        update.message.reply_text("ℹ️ Немає активних за 24 години")
+        await update.message.reply_text("ℹ️ Немає активних за 24 години")
         return
     
     mentions = [f"<a href='tg://user?id={u}'>🔥</a>" for u in users[:50]]
-    update.message.reply_text(f"🔥 АКТИВНІ ГРАВЦІ ({len(users)}):\n" + " ".join(mentions), parse_mode=ParseMode.HTML)
+    await update.message.reply_text(f"🔥 АКТИВНІ ГРАВЦІ ({len(users)}):\n" + " ".join(mentions), parse_mode=ParseMode.HTML)
 
-def officers(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def officers(update: Update, context: ContextTypes.DEFAULT_TYPE):
     users = get_role_users("officer")
     if not users:
-        update.message.reply_text("ℹ️ Немає призначених офіцерів")
+        await update.message.reply_text("ℹ️ Немає призначених офіцерів")
         return
     mentions = [f"<a href='tg://user?id={u}'>👑</a>" for u in users]
-    update.message.reply_text("👑 ОФІЦЕРИ:\n" + " ".join(mentions), parse_mode=ParseMode.HTML)
+    await update.message.reply_text("👑 ОФІЦЕРИ:\n" + " ".join(mentions), parse_mode=ParseMode.HTML)
 
 # Поради
-def tip(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def tip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tips = [
         "🎯 Завжди донать очки гільдії одразу після скидання",
         "⚔️ У Territory War став найсильніших персонажів на захист першими",
@@ -237,7 +238,7 @@ def tip(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🏆 Гайди та моди дивись на swgoh.gg",
         "📊 Перевіряй профіль суперника перед атакою в GAC"
     ]
-    update.message.reply_text(f"💡 ПОРАДА: {random.choice(tips)}")
+    await update.message.reply_text(f"💡 ПОРАДА: {random.choice(tips)}")
 
 # ========== ЗАПУСК ==========
 def main():
