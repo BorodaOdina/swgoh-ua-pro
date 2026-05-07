@@ -4,7 +4,8 @@ import sqlite3
 import time
 import random
 from datetime import datetime
-from telegram import Update, ParseMode
+from telegram import Update
+from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 TOKEN = os.environ.get("TOKEN")
