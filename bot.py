@@ -4,7 +4,9 @@ import sqlite3
 import time
 import asyncio
 
-TOKEN = "ВСТАВЬ_СВОЙ_ТОКЕН_СЮДА"
+import os
+TOKEN = os.environ.get("TOKEN")
+
 
 conn = sqlite3.connect("db.sqlite", check_same_thread=False)
 cur = conn.cursor()
