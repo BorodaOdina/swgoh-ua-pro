@@ -28,6 +28,13 @@ CREATE TABLE IF NOT EXISTS users (
     PRIMARY KEY (id, chat_id)
 )
 """)
+
+cur.execute("""
+CREATE TABLE IF NOT EXISTS guild_settings (
+    chat_id INTEGER PRIMARY KEY,
+    reminder_hour INTEGER DEFAULT 20
+)
+""")
 conn.commit()
 
 # ========== ТЕКСТИ КОМАНД (МОВИ) ==========
@@ -49,12 +56,13 @@ TEXTS = {
                  "/energy - нагадати про енергію\n"
                  "/makeofficer @user - призначити офіцера\n"
                  "/removeofficer @user - зняти офіцера\n"
-                 "/inactive [дні] - список неактивних\n\n"
+                 "/inactive [дні] - список неактивних\n"
+                 "/setremind <година> - змінити час нагадування\n\n"
                  "📊 СТАТИСТИКА:\n"
                  "/stats - статистика гільдії\n"
                  "/active - активні сьогодні\n"
                  "/officers - список офіцерів\n\n"
-                 "⏰ Щоденне нагадування про енергію о 20:00\n\n"
+                 "⏰ Щоденне нагадування о {remind_time}:00\n\n"
                  "🌐 Змінити мову: /language\n"
                  "💙 Підтримати проект: /support",
         'register_ok': "✅ Ти зареєстрований у гільдії!",
@@ -85,6 +93,9 @@ TEXTS = {
         'user_no_ally': "❌ Гравець не прив'язав Ally Code",
         'lang_changed': "🌐 Мову змінено на українську",
         'support': "💙 Підтримати розробку бота: [Monobank](https://send.monobank.ua/jar/9DMsxWr16b)\n\nДякуємо за підтримку! 🙏",
+        'remind_set': "✅ Час нагадування змінено на {hour}:00",
+        'remind_invalid': "❌ Введіть годину від 0 до 23",
+        'remind_usage': "❌ Приклад: `/setremind 20`",
     },
     'ru': {
         'start': "🤖 SWGOH GUILD BOT\n\n"
@@ -103,12 +114,13 @@ TEXTS = {
                  "/energy - напомнить об энергии\n"
                  "/makeofficer @user - назначить офицера\n"
                  "/removeofficer @user - снять офицера\n"
-                 "/inactive [дни] - список неактивных\n\n"
+                 "/inactive [дни] - список неактивных\n"
+                 "/setremind <час> - изменить время напоминания\n\n"
                  "📊 СТАТИСТИКА:\n"
                  "/stats - статистика гильдии\n"
                  "/active - активные сегодня\n"
                  "/officers - список офицеров\n\n"
-                 "⏰ Ежедневное напоминание об энергии в 20:00\n\n"
+                 "⏰ Ежедневное напоминание в {remind_time}:00\n\n"
                  "🌐 Сменить язык: /language\n"
                  "💙 Поддержать проект: /support",
         'register_ok': "✅ Ты зарегистрирован в гильдии!",
@@ -139,6 +151,9 @@ TEXTS = {
         'user_no_ally': "❌ Игрок не привязал Ally Code",
         'lang_changed': "🌐 Язык изменён на русский",
         'support': "💙 Поддержать разработку бота: [Monobank](https://send.monobank.ua/jar/9DMsxWr16b)\n\nСпасибо за поддержку! 🙏",
+        'remind_set': "✅ Время напоминания изменено на {hour}:00",
+        'remind_invalid': "❌ Введите час от 0 до 23",
+        'remind_usage': "❌ Пример: `/setremind 20`",
     },
     'en': {
         'start': "🤖 SWGOH GUILD BOT\n\n"
@@ -157,12 +172,13 @@ TEXTS = {
                  "/energy - remind about guild energy\n"
                  "/makeofficer @user - appoint an officer\n"
                  "/removeofficer @user - remove an officer\n"
-                 "/inactive [days] - list of inactive players\n\n"
+                 "/inactive [days] - list of inactive players\n"
+                 "/setremind <hour> - change reminder time\n\n"
                  "📊 STATISTICS:\n"
                  "/stats - guild statistics\n"
                  "/active - active today\n"
                  "/officers - list of officers\n\n"
-                 "⏰ Daily energy reminder at 8:00 PM\n\n"
+                 "⏰ Daily reminder at {remind_time}:00\n\n"
                  "🌐 Change language: /language\n"
                  "💙 Support the project: /support",
         'register_ok': "✅ You are registered in the guild!",
@@ -193,6 +209,9 @@ TEXTS = {
         'user_no_ally': "❌ Player has not linked Ally Code",
         'lang_changed': "🌐 Language changed to English",
         'support': "💙 Support bot development: [Monobank](https://send.monobank.ua/jar/9DMsxWr16b)\n\nThank you for your support! 🙏",
+        'remind_set': "✅ Reminder time changed to {hour}:00",
+        'remind_invalid': "❌ Enter hour from 0 to 23",
+        'remind_usage': "❌ Example: `/setremind 20`",
     }
 }
 
@@ -250,6 +269,16 @@ def get_all_chat_ids():
     cur.execute("SELECT DISTINCT chat_id FROM users")
     return [row[0] for row in cur.fetchall()]
 
+# ========== НАЛАШТУВАННЯ ГІЛЬДІЇ ==========
+def get_reminder_hour(chat_id):
+    cur.execute("SELECT reminder_hour FROM guild_settings WHERE chat_id=?", (chat_id,))
+    row = cur.fetchone()
+    return row[0] if row else 20
+
+def set_reminder_hour(chat_id, hour):
+    cur.execute("INSERT OR REPLACE INTO guild_settings (chat_id, reminder_hour) VALUES (?, ?)", (chat_id, hour))
+    conn.commit()
+
 # ========== SWGOH.GG (ТІЛЬКИ ПЕРЕВІРКА ТА ПОСИЛАННЯ) ==========
 async def check_swgoh_profile(ally_code: str):
     ally_code = ally_code.replace("-", "")
@@ -273,9 +302,13 @@ app = None
 async def send_daily_reminder():
     if app is None:
         return
+    current_hour = time.localtime().tm_hour
     chat_ids = get_all_chat_ids()
     for chat_id in chat_ids:
         try:
+            reminder_hour = get_reminder_hour(chat_id)
+            if current_hour != reminder_hour:
+                continue
             cur.execute("SELECT language FROM users WHERE chat_id=? LIMIT 1", (chat_id,))
             row = cur.fetchone()
             lang = row[0] if row else 'ua'
@@ -287,7 +320,7 @@ async def send_daily_reminder():
 def schedule_reminder():
     scheduler.add_job(
         lambda: asyncio.run_coroutine_threadsafe(send_daily_reminder(), asyncio.get_event_loop()),
-        CronTrigger(hour=20, minute=0)
+        CronTrigger(minute=0)
     )
     scheduler.start()
 
@@ -308,7 +341,8 @@ async def set_language_callback(update: Update, context: ContextTypes.DEFAULT_TY
     chat_id = query.message.chat_id
     lang = query.data.split("_")[1]
     set_language(user_id, chat_id, lang)
-    start_text = get_text(user_id, chat_id, 'start')
+    remind_hour = get_reminder_hour(chat_id)
+    start_text = get_text(user_id, chat_id, 'start', remind_time=remind_hour)
     await query.edit_message_text(start_text, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -319,12 +353,37 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not row:
         await language_choice(update, context)
         return
-    await update.message.reply_text(get_text(user_id, chat_id, 'start'), parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
+    remind_hour = get_reminder_hour(chat_id)
+    start_text = get_text(user_id, chat_id, 'start', remind_time=remind_hour)
+    await update.message.reply_text(start_text, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
 async def support(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     chat_id = update.effective_chat.id
     await update.message.reply_text(get_text(user_id, chat_id, 'support'), parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
+
+async def setremind(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
+    
+    if not is_officer(user_id, chat_id):
+        await update.message.reply_text(get_text(user_id, chat_id, 'only_officer'))
+        return
+    
+    if not context.args:
+        await update.message.reply_text(get_text(user_id, chat_id, 'remind_usage'), parse_mode=ParseMode.MARKDOWN)
+        return
+    
+    try:
+        hour = int(context.args[0])
+        if hour < 0 or hour > 23:
+            raise ValueError
+    except ValueError:
+        await update.message.reply_text(get_text(user_id, chat_id, 'remind_invalid'))
+        return
+    
+    set_reminder_hour(chat_id, hour)
+    await update.message.reply_text(get_text(user_id, chat_id, 'remind_set', hour=hour))
 
 async def init(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -618,6 +677,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("language", language_choice))
     app.add_handler(CommandHandler("support", support))
+    app.add_handler(CommandHandler("setremind", setremind))
     app.add_handler(CallbackQueryHandler(set_language_callback, pattern="lang_"))
     
     app.add_handler(CommandHandler("init", init))
