@@ -38,7 +38,7 @@ TEXTS = {
                  "/register - реєстрація\n"
                  "/mystat - моя статистика\n"
                  "/setally <код> - прив'язати Ally Code\n"
-                 "/myprofile - мій профіль з swgoh.gg\n"
+                 "/myprofile - мій профіль swgoh.gg\n"
                  "/profile @user - профіль іншого гравця\n\n"
                  "👑 КОМАНДИ ОФІЦЕРІВ:\n"
                  "/init - стати першим офіцером\n"
@@ -75,15 +75,16 @@ TEXTS = {
                  "👑 Офіцерів: {officers}\n"
                  "🔥 Активні сьогодні: {active_today}\n"
                  "🔗 Прив'язали Ally Code: {linked}",
-        'setally_usage': "❌ Приклад: `/setally 123456789`",
+        'setally_usage': "❌ Приклад: `/setally 746197475`",
         'invalid_ally': "❌ Невірний Ally Code (9-10 цифр)",
         'ally_not_found': "❌ Профіль не знайдено на swgoh.gg. Перевір Ally Code.",
-        'ally_saved': "✅ Ally Code `{code}` прив'язаний до гравця *{name}*",
-        'profile_not_found': "❌ Не вдалося завантажити профіль. Спробуй пізніше.",
+        'ally_saved': "✅ Ally Code `{code}` прив'язаний!\n\n🔗 [Переглянути профіль]({url})",
+        'profile_link': "👤 **Профіль гравця {name}**\n\n🔗 [Відкрити профіль]({url})",
+        'profile_self': "👤 **Твій профіль SWGOH.gg**\n\n🔗 [Відкрити профіль]({url})\n\nAlly Code: `{code}`",
         'no_ally': "❌ Спочатку прив'яжи Ally Code через `/setally`",
         'user_no_ally': "❌ Гравець не прив'язав Ally Code",
         'lang_changed': "🌐 Мову змінено на українську",
-        'support': "💙 Підтримати розробку бота можна тут: [Monobank](https://send.monobank.ua/jar/9DMsxWr16b)\n\nДякуємо за підтримку! 🙏",
+        'support': "💙 Підтримати розробку бота: [Monobank](https://send.monobank.ua/jar/9DMsxWr16b)\n\nДякуємо за підтримку! 🙏",
     },
     'ru': {
         'start': "🤖 SWGOH GUILD BOT\n\n"
@@ -91,7 +92,7 @@ TEXTS = {
                  "/register - регистрация\n"
                  "/mystat - моя статистика\n"
                  "/setally <код> - привязать Ally Code\n"
-                 "/myprofile - мой профиль с swgoh.gg\n"
+                 "/myprofile - мой профиль swgoh.gg\n"
                  "/profile @user - профиль другого игрока\n\n"
                  "👑 КОМАНДЫ ОФИЦЕРОВ:\n"
                  "/init - стать первым офицером\n"
@@ -128,15 +129,16 @@ TEXTS = {
                  "👑 Офицеров: {officers}\n"
                  "🔥 Активны сегодня: {active_today}\n"
                  "🔗 Привязали Ally Code: {linked}",
-        'setally_usage': "❌ Пример: `/setally 123456789`",
+        'setally_usage': "❌ Пример: `/setally 746197475`",
         'invalid_ally': "❌ Неверный Ally Code (9-10 цифр)",
         'ally_not_found': "❌ Профиль не найден на swgoh.gg. Проверь Ally Code.",
-        'ally_saved': "✅ Ally Code `{code}` привязан к игроку *{name}*",
-        'profile_not_found': "❌ Не удалось загрузить профиль. Попробуй позже.",
+        'ally_saved': "✅ Ally Code `{code}` привязан!\n\n🔗 [Перейти к профилю]({url})",
+        'profile_link': "👤 **Профиль игрока {name}**\n\n🔗 [Открыть профиль]({url})",
+        'profile_self': "👤 **Твой профиль SWGOH.gg**\n\n🔗 [Открыть профиль]({url})\n\nAlly Code: `{code}`",
         'no_ally': "❌ Сначала привяжи Ally Code через `/setally`",
         'user_no_ally': "❌ Игрок не привязал Ally Code",
         'lang_changed': "🌐 Язык изменён на русский",
-        'support': "💙 Поддержать разработку бота можно здесь: [Monobank](https://send.monobank.ua/jar/9DMsxWr16b)\n\nСпасибо за поддержку! 🙏",
+        'support': "💙 Поддержать разработку бота: [Monobank](https://send.monobank.ua/jar/9DMsxWr16b)\n\nСпасибо за поддержку! 🙏",
     },
     'en': {
         'start': "🤖 SWGOH GUILD BOT\n\n"
@@ -144,7 +146,7 @@ TEXTS = {
                  "/register - register in the guild\n"
                  "/mystat - my statistics\n"
                  "/setally <code> - link Ally Code\n"
-                 "/myprofile - my profile from swgoh.gg\n"
+                 "/myprofile - my swgoh.gg profile\n"
                  "/profile @user - another player's profile\n\n"
                  "👑 OFFICER COMMANDS:\n"
                  "/init - become the first officer\n"
@@ -181,15 +183,16 @@ TEXTS = {
                  "👑 Officers: {officers}\n"
                  "🔥 Active today: {active_today}\n"
                  "🔗 Linked Ally Code: {linked}",
-        'setally_usage': "❌ Example: `/setally 123456789`",
+        'setally_usage': "❌ Example: `/setally 746197475`",
         'invalid_ally': "❌ Invalid Ally Code (9-10 digits)",
         'ally_not_found': "❌ Profile not found on swgoh.gg. Check Ally Code.",
-        'ally_saved': "✅ Ally Code `{code}` linked to player *{name}*",
-        'profile_not_found': "❌ Could not load profile. Try again later.",
+        'ally_saved': "✅ Ally Code `{code}` linked!\n\n🔗 [View profile]({url})",
+        'profile_link': "👤 **Profile of {name}**\n\n🔗 [Open profile]({url})",
+        'profile_self': "👤 **Your SWGOH.gg profile**\n\n🔗 [Open profile]({url})\n\nAlly Code: `{code}`",
         'no_ally': "❌ First link your Ally Code via `/setally`",
         'user_no_ally': "❌ Player has not linked Ally Code",
         'lang_changed': "🌐 Language changed to English",
-        'support': "💙 Support the bot development here: [Monobank](https://send.monobank.ua/jar/9DMsxWr16b)\n\nThank you for your support! 🙏",
+        'support': "💙 Support bot development: [Monobank](https://send.monobank.ua/jar/9DMsxWr16b)\n\nThank you for your support! 🙏",
     }
 }
 
@@ -247,28 +250,19 @@ def get_all_chat_ids():
     cur.execute("SELECT DISTINCT chat_id FROM users")
     return [row[0] for row in cur.fetchall()]
 
-# ========== SWGOH.GG API ==========
-async def fetch_swgoh_player(ally_code: str):
+# ========== SWGOH.GG (ТІЛЬКИ ПЕРЕВІРКА ТА ПОСИЛАННЯ) ==========
+async def check_swgoh_profile(ally_code: str):
     ally_code = ally_code.replace("-", "")
     if not ally_code.isdigit() or len(ally_code) not in (9,10):
         return None
-    url = f"https://swgoh.gg/api/player/{ally_code}/"
+    url = f"https://swgoh.gg/p/{ally_code}/"
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, timeout=10) as resp:
-                if resp.status != 200:
+                if resp.status == 200:
+                    return url
+                else:
                     return None
-                data = await resp.json()
-                return {
-                    "name": data.get("name", "Unknown"),
-                    "galactic_power": data.get("galactic_power", 0),
-                    "character_power": data.get("character_power", 0),
-                    "ship_power": data.get("ship_power", 0),
-                    "gac_rank": data.get("gac_rank", 0),
-                    "arena_rank": data.get("arena_rank", 0),
-                    "fleet_rank": data.get("fleet_arena_rank", 0),
-                    "characters": data.get("characters", [])[:5],
-                }
     except:
         return None
 
@@ -371,7 +365,7 @@ async def mystat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         time_str = f"{diff // 86400} днів тому"
     await update.message.reply_text(f"📊 ТВОЯ СТАТИСТИКА\n\nРоль: {role}\nОстання активність: {time_str}")
 
-# ========== SWGOH КОМАНДИ ==========
+# ========== SWGOH КОМАНДИ (ТІЛЬКИ ПОСИЛАННЯ) ==========
 async def setally(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
@@ -382,13 +376,19 @@ async def setally(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not ally_code.isdigit() or len(ally_code) not in (9,10):
         await update.message.reply_text(get_text(user_id, chat_id, 'invalid_ally'))
         return
-    profile = await fetch_swgoh_player(ally_code)
-    if not profile:
+    
+    url = await check_swgoh_profile(ally_code)
+    if not url:
         await update.message.reply_text(get_text(user_id, chat_id, 'ally_not_found'))
         return
+    
     cur.execute("UPDATE users SET ally_code=? WHERE id=? AND chat_id=?", (ally_code, user_id, chat_id))
     conn.commit()
-    await update.message.reply_text(get_text(user_id, chat_id, 'ally_saved', code=ally_code, name=profile['name']), parse_mode=ParseMode.MARKDOWN)
+    await update.message.reply_text(
+        get_text(user_id, chat_id, 'ally_saved', code=ally_code, url=url),
+        parse_mode=ParseMode.MARKDOWN,
+        disable_web_page_preview=True
+    )
 
 async def myprofile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -398,34 +398,25 @@ async def myprofile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not row or not row[0]:
         await update.message.reply_text(get_text(user_id, chat_id, 'no_ally'), parse_mode=ParseMode.MARKDOWN)
         return
-    profile = await fetch_swgoh_player(row[0])
-    if not profile:
-        await update.message.reply_text(get_text(user_id, chat_id, 'profile_not_found'))
-        return
-    gac_division = ["Bronzium", "Chromium", "Aurodium", "Kyber"][min(3, profile['gac_rank'] // 1000)] if profile['gac_rank'] else "Unknown"
-    text = (
-        f"👤 *{profile['name']}*\n\n"
-        f"📊 Galactic Power: `{profile['galactic_power']:,}`\n"
-        f"⭐ Character GP: `{profile['character_power']:,}`\n"
-        f"🚀 Ship GP: `{profile['ship_power']:,}`\n\n"
-        f"🏆 GAC Division: *{gac_division}*\n"
-        f"🎯 GAC Rank: `#{profile['gac_rank']}`\n"
-        f"⚔️ Arena: `#{profile['arena_rank']}`\n"
-        f"🛸 Fleet: `#{profile['fleet_rank']}`\n\n"
-        f"⭐ Топ персонажі:\n"
+    ally_code = row[0]
+    url = f"https://swgoh.gg/p/{ally_code}/"
+    await update.message.reply_text(
+        get_text(user_id, chat_id, 'profile_self', url=url, code=ally_code),
+        parse_mode=ParseMode.MARKDOWN,
+        disable_web_page_preview=True
     )
-    for char in profile['characters']:
-        text += f"• {char.get('name', '?')} ⭐{char.get('stars', 0)}\n"
-    await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
 async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
     if not context.args:
-        await update.message.reply_text("❌ Приклад: `/profile @username` або `/profile 123456789`", parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text("❌ Приклад: `/profile @username` або `/profile 746197475`", parse_mode=ParseMode.MARKDOWN)
         return
+    
     target = context.args[0]
     ally_code = None
+    username = None
+    
     if target.startswith("@"):
         username = target[1:]
         cur.execute("SELECT ally_code FROM users WHERE username LIKE ? AND chat_id=?", (f"%{username}%", chat_id))
@@ -440,11 +431,20 @@ async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not ally_code.isdigit() or len(ally_code) not in (9,10):
             await update.message.reply_text(get_text(user_id, chat_id, 'invalid_ally'))
             return
-    profile = await fetch_swgoh_player(ally_code)
-    if not profile:
-        await update.message.reply_text(get_text(user_id, chat_id, 'ally_not_found'))
-        return
-    await update.message.reply_text(f"👤 *{profile['name']}* | GP: {profile['galactic_power']:,} | GAC: #{profile['gac_rank']}", parse_mode=ParseMode.MARKDOWN)
+    
+    url = f"https://swgoh.gg/p/{ally_code}/"
+    if username:
+        await update.message.reply_text(
+            get_text(user_id, chat_id, 'profile_link', name=f"@{username}", url=url),
+            parse_mode=ParseMode.MARKDOWN,
+            disable_web_page_preview=True
+        )
+    else:
+        await update.message.reply_text(
+            f"👤 **Профіль SWGOH.gg**\n\n🔗 [Відкрити профіль]({url})\n\nAlly Code: `{ally_code}`",
+            parse_mode=ParseMode.MARKDOWN,
+            disable_web_page_preview=True
+        )
 
 # ========== КОМАНДИ ОФІЦЕРІВ ==========
 async def energy(update: Update, context: ContextTypes.DEFAULT_TYPE):
