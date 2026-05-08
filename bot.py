@@ -38,7 +38,9 @@ cur.execute("""
 CREATE TABLE IF NOT EXISTS guild_settings (
     chat_id INTEGER PRIMARY KEY,
     reminder_hour INTEGER DEFAULT 20,
-    reminder_minute INTEGER DEFAULT 0
+    reminder_minute INTEGER DEFAULT 0,
+    timezone INTEGER DEFAULT 3,
+    last_reminder_date TEXT DEFAULT ''
 )
 """)
 conn.commit()
@@ -54,15 +56,16 @@ TEXTS = {
                  "/profile @user - профіль іншого гравця\n\n"
                  "👑 КОМАНДИ ОФІЦЕРІВ:\n"
                  "/init - стати першим офіцером\n"
-                 "/raid - рейд\n"
-                 "/tw - Territory War\n"
-                 "/tb - Territory Battle\n"
+                 "/raid - рейд (з позначкою всіх)\n"
+                 "/tw - Territory War (з позначкою всіх)\n"
+                 "/tb - Territory Battle (з позначкою всіх)\n"
                  "/all - всіх покликати\n"
-                 "/energy - нагадати про енергію\n"
+                 "/energy - нагадати про енергію (з позначкою всіх)\n"
                  "/makeofficer @user - призначити офіцера\n"
                  "/removeofficer @user - зняти офіцера\n"
                  "/inactive [дні] - список неактивних\n"
-                 "/setremind <година:хвилина> - змінити час нагадування\n\n"
+                 "/setremind <година:хвилина> - змінити час нагадування\n"
+                 "/timezone <зміщення> - налаштувати часовий пояс (за замовчуванням 3)\n\n"
                  "📊 СТАТИСТИКА:\n"
                  "/stats - статистика гільдії\n"
                  "/active - активні сьогодні\n"
@@ -101,6 +104,8 @@ TEXTS = {
         'remind_usage': "❌ Приклад: `/setremind 20` або `/setremind 20:30`",
         'ask_ally_code': "🔢 Надішли Ally Code (9-10 цифр, без дефісів).",
         'cancel': "❌ Дію скасовано.",
+        'timezone_set': "✅ Часовий пояс змінено на UTC{tz:+d}",
+        'timezone_usage': "❌ Приклад: `/timezone 3` (для України)",
     },
     'ru': {
         'start': "🤖 SWGOH GUILD BOT\n\n"
@@ -112,15 +117,16 @@ TEXTS = {
                  "/profile @user - профиль другого игрока\n\n"
                  "👑 КОМАНДЫ ОФИЦЕРОВ:\n"
                  "/init - стать первым офицером\n"
-                 "/raid - рейд\n"
-                 "/tw - Territory War\n"
-                 "/tb - Territory Battle\n"
+                 "/raid - рейд (с отметкой всех)\n"
+                 "/tw - Territory War (с отметкой всех)\n"
+                 "/tb - Territory Battle (с отметкой всех)\n"
                  "/all - призвать всех\n"
-                 "/energy - напомнить об энергии\n"
+                 "/energy - напомнить об энергии (с отметкой всех)\n"
                  "/makeofficer @user - назначить офицера\n"
                  "/removeofficer @user - снять офицера\n"
                  "/inactive [дни] - список неактивных\n"
-                 "/setremind <час:минута> - изменить время напоминания\n\n"
+                 "/setremind <час:минута> - изменить время напоминания\n"
+                 "/timezone <смещение> - настроить часовой пояс (по умолчанию 3)\n\n"
                  "📊 СТАТИСТИКА:\n"
                  "/stats - статистика гильдии\n"
                  "/active - активные сегодня\n"
@@ -159,6 +165,8 @@ TEXTS = {
         'remind_usage': "❌ Пример: `/setremind 20` или `/setremind 20:30`",
         'ask_ally_code': "🔢 Отправь Ally Code (9-10 цифр, без дефисов).",
         'cancel': "❌ Действие отменено.",
+        'timezone_set': "✅ Часовой пояс изменён на UTC{tz:+d}",
+        'timezone_usage': "❌ Пример: `/timezone 3` (для Украины)",
     },
     'en': {
         'start': "🤖 SWGOH GUILD BOT\n\n"
@@ -170,15 +178,16 @@ TEXTS = {
                  "/profile @user - another player's profile\n\n"
                  "👑 OFFICER COMMANDS:\n"
                  "/init - become the first officer\n"
-                 "/raid - raid announcement\n"
-                 "/tw - Territory War\n"
-                 "/tb - Territory Battle\n"
+                 "/raid - raid announcement (mentions all)\n"
+                 "/tw - Territory War (mentions all)\n"
+                 "/tb - Territory Battle (mentions all)\n"
                  "/all - mention everyone\n"
-                 "/energy - remind about guild energy\n"
+                 "/energy - remind about guild energy (mentions all)\n"
                  "/makeofficer @user - appoint an officer\n"
                  "/removeofficer @user - remove an officer\n"
                  "/inactive [days] - list of inactive players\n"
-                 "/setremind <hour:minute> - change reminder time\n\n"
+                 "/setremind <hour:minute> - change reminder time\n"
+                 "/timezone <offset> - set timezone (default 3)\n\n"
                  "📊 STATISTICS:\n"
                  "/stats - guild statistics\n"
                  "/active - active today\n"
@@ -217,6 +226,8 @@ TEXTS = {
         'remind_usage': "❌ Example: `/setremind 20` or `/setremind 20:30`",
         'ask_ally_code': "🔢 Send Ally Code (9-10 digits, no hyphens).",
         'cancel': "❌ Action cancelled.",
+        'timezone_set': "✅ Timezone changed to UTC{tz:+d}",
+        'timezone_usage': "❌ Example: `/timezone 3` (for Ukraine)",
     }
 }
 
@@ -226,6 +237,15 @@ def get_text(uid, chat_id, key, **kwargs):
     lang = row[0] if row else 'ua'
     text = TEXTS.get(lang, TEXTS['ua']).get(key, TEXTS['ua'][key])
     return text.format(**kwargs) if kwargs else text
+
+def get_timezone(chat_id):
+    cur.execute("SELECT timezone FROM guild_settings WHERE chat_id=?", (chat_id,))
+    row = cur.fetchone()
+    return row[0] if row else 3
+
+def get_local_time(chat_id):
+    tz = get_timezone(chat_id)
+    return time.localtime(time.time() + tz * 3600)
 
 def set_language(uid, chat_id, lang):
     cur.execute("UPDATE users SET language=? WHERE id=? AND chat_id=?", (lang, uid, chat_id))
@@ -290,20 +310,24 @@ loop = None
 async def send_daily_reminder():
     if app is None:
         return
-    now_local = time.localtime()
-    current_hour = now_local.tm_hour
-    current_minute = now_local.tm_min
     chat_ids = get_all_chat_ids()
     for chat_id in chat_ids:
         try:
             hour, minute = get_reminder_time(chat_id)
-            if current_hour != hour or current_minute != minute:
-                continue
-            cur.execute("SELECT language FROM users WHERE chat_id=? LIMIT 1", (chat_id,))
-            row = cur.fetchone()
-            lang = row[0] if row else 'ua'
-            energy_text = TEXTS.get(lang, TEXTS['ua']).get('energy', "🔋 НЕ ЗАБУДЬ СДАТИ ЕНЕРГІЮ!\n")
-            await app.bot.send_message(chat_id=chat_id, text=energy_text, parse_mode=ParseMode.MARKDOWN)
+            local = get_local_time(chat_id)
+            if local.tm_hour == hour and local.tm_min == minute:
+                today = f"{local.tm_year}-{local.tm_mon}-{local.tm_mday}"
+                cur.execute("SELECT last_reminder_date FROM guild_settings WHERE chat_id=?", (chat_id,))
+                row = cur.fetchone()
+                if row and row[0] == today:
+                    continue
+                cur.execute("UPDATE guild_settings SET last_reminder_date=? WHERE chat_id=?", (today, chat_id))
+                conn.commit()
+                cur.execute("SELECT language FROM users WHERE chat_id=? LIMIT 1", (chat_id,))
+                row = cur.fetchone()
+                lang = row[0] if row else 'ua'
+                energy_text = TEXTS.get(lang, TEXTS['ua']).get('energy', "🔋 НЕ ЗАБУДЬ СДАТИ ЕНЕРГІЮ!\n")
+                await app.bot.send_message(chat_id=chat_id, text=energy_text, parse_mode=ParseMode.MARKDOWN)
         except Exception as e:
             print(f"Error in reminder: {e}")
 
@@ -349,6 +373,26 @@ async def support(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     await update.message.reply_text(get_text(user_id, chat_id, 'support'), parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
+async def set_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
+    if not is_officer(user_id, chat_id):
+        await update.message.reply_text(get_text(user_id, chat_id, 'only_officer'))
+        return
+    if not context.args:
+        await update.message.reply_text(get_text(user_id, chat_id, 'timezone_usage'))
+        return
+    try:
+        tz = int(context.args[0])
+        if tz < -12 or tz > 14:
+            raise ValueError
+    except:
+        await update.message.reply_text("❌ Введіть число від -12 до 14")
+        return
+    cur.execute("UPDATE guild_settings SET timezone=? WHERE chat_id=?", (tz, chat_id))
+    conn.commit()
+    await update.message.reply_text(get_text(user_id, chat_id, 'timezone_set', tz=tz))
+
 async def init(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
@@ -386,6 +430,59 @@ async def mystat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         time_str = f"{diff // 86400} днів тому"
     await update.message.reply_text(f"📊 ТВОЯ СТАТИСТИКА\n\nРоль: {role}\nОстання активність: {time_str}")
 
+# --- Команди з позначкою всіх ---
+async def mention_all(chat_id, title, emoji):
+    users = get_all_users(chat_id)
+    if not users:
+        return "❌ Немає зареєстрованих гравців"
+    mentions = [f"<a href='tg://user?id={u}'>{emoji}</a>" for u in users[:50]]
+    return title + " ".join(mentions)
+
+async def raid(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
+    if not is_officer(user_id, chat_id):
+        await update.message.reply_text(get_text(user_id, chat_id, 'only_officer'))
+        return
+    text = await mention_all(chat_id, get_text(user_id, chat_id, 'raid'), "⚔️")
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+
+async def tw(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
+    if not is_officer(user_id, chat_id):
+        await update.message.reply_text(get_text(user_id, chat_id, 'only_officer'))
+        return
+    text = await mention_all(chat_id, get_text(user_id, chat_id, 'tw'), "⚔️")
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+
+async def tb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
+    if not is_officer(user_id, chat_id):
+        await update.message.reply_text(get_text(user_id, chat_id, 'only_officer'))
+        return
+    text = await mention_all(chat_id, get_text(user_id, chat_id, 'tb'), "🌌")
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+
+async def all_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
+    if not is_officer(user_id, chat_id):
+        await update.message.reply_text(get_text(user_id, chat_id, 'only_officer'))
+        return
+    text = await mention_all(chat_id, get_text(user_id, chat_id, 'all'), "👤")
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+
+async def energy(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
+    if not is_officer(user_id, chat_id):
+        await update.message.reply_text(get_text(user_id, chat_id, 'only_officer'))
+        return
+    text = await mention_all(chat_id, get_text(user_id, chat_id, 'energy'), "🔋")
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+
 # --- Діалогові команди ---
 async def setally_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.args:
@@ -415,7 +512,7 @@ async def process_setally(update: Update, context: ContextTypes.DEFAULT_TYPE, al
 
 async def makeofficer_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_officer(update.effective_user.id, update.effective_chat.id):
-        await update.message.reply_text("❌ Тільки офіцери")
+        await update.message.reply_text(get_text(update.effective_user.id, update.effective_chat.id, 'only_officer'))
         return ConversationHandler.END
     if context.args:
         target = context.args[0]
@@ -448,7 +545,7 @@ async def process_makeofficer(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def removeofficer_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_officer(update.effective_user.id, update.effective_chat.id):
-        await update.message.reply_text("❌ Тільки офіцери")
+        await update.message.reply_text(get_text(update.effective_user.id, update.effective_chat.id, 'only_officer'))
         return ConversationHandler.END
     if context.args:
         target = context.args[0]
@@ -485,7 +582,7 @@ async def process_removeofficer(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def inactive_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_officer(update.effective_user.id, update.effective_chat.id):
-        await update.message.reply_text("❌ Тільки офіцери")
+        await update.message.reply_text(get_text(update.effective_user.id, update.effective_chat.id, 'only_officer'))
         return ConversationHandler.END
     if context.args and context.args[0].isdigit():
         days = int(context.args[0])
@@ -505,9 +602,9 @@ async def process_inactive(update: Update, context: ContextTypes.DEFAULT_TYPE, d
     user_id = update.effective_user.id
     inactive_users = get_inactive_users(chat_id, days)
     if not inactive_users:
-        await update.message.reply_text(f"ℹ️ Немає неактивних гравців за {days} днів")
+        await update.message.reply_text(get_text(user_id, chat_id, 'no_inactive', days=days))
         return ConversationHandler.END
-    text = f"💤 НЕАКТИВНІ {days}+ ДНІВ:\n\n"
+    text = get_text(user_id, chat_id, 'inactive_title', days=days)
     for uid, username, last_active in inactive_users[:20]:
         inactive_days = (now() - last_active) // 86400
         name = username or str(uid)
@@ -517,7 +614,7 @@ async def process_inactive(update: Update, context: ContextTypes.DEFAULT_TYPE, d
 
 async def setremind_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_officer(update.effective_user.id, update.effective_chat.id):
-        await update.message.reply_text("❌ Тільки офіцери")
+        await update.message.reply_text(get_text(update.effective_user.id, update.effective_chat.id, 'only_officer'))
         return ConversationHandler.END
     if context.args:
         time_str = context.args[0]
@@ -540,64 +637,14 @@ async def process_setremind(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         return WAITING_SETREMIND
     chat_id = update.effective_chat.id
     set_reminder_time(chat_id, hour, minute)
-    await update.message.reply_text(f"✅ Час нагадування змінено на {hour:02d}:{minute:02d}")
+    await update.message.reply_text(get_text(update.effective_user.id, chat_id, 'remind_set', hour=hour, minute=minute))
     return ConversationHandler.END
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("❌ Дію скасовано.")
     return ConversationHandler.END
 
-# --- Інші команди (без діалогу) ---
-async def energy(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
-    user_id = update.effective_user.id
-    if not is_officer(user_id, chat_id):
-        await update.message.reply_text(get_text(user_id, chat_id, 'only_officer'))
-        return
-    users = get_all_users(chat_id)
-    mentions = [f"<a href='tg://user?id={u}'>🔋</a>" for u in users[:50]]
-    await update.message.reply_text(get_text(user_id, chat_id, 'energy') + " ".join(mentions), parse_mode=ParseMode.HTML)
-
-async def raid(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
-    user_id = update.effective_user.id
-    if not is_officer(user_id, chat_id):
-        await update.message.reply_text(get_text(user_id, chat_id, 'only_officer'))
-        return
-    users = get_all_users(chat_id)
-    mentions = [f"<a href='tg://user?id={u}'>⚔️</a>" for u in users[:50]]
-    await update.message.reply_text(get_text(user_id, chat_id, 'raid') + " ".join(mentions), parse_mode=ParseMode.HTML)
-
-async def tw(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
-    user_id = update.effective_user.id
-    if not is_officer(user_id, chat_id):
-        await update.message.reply_text(get_text(user_id, chat_id, 'only_officer'))
-        return
-    users = get_all_users(chat_id)
-    mentions = [f"<a href='tg://user?id={u}'>⚔️</a>" for u in users[:50]]
-    await update.message.reply_text(get_text(user_id, chat_id, 'tw') + " ".join(mentions), parse_mode=ParseMode.HTML)
-
-async def tb(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
-    user_id = update.effective_user.id
-    if not is_officer(user_id, chat_id):
-        await update.message.reply_text(get_text(user_id, chat_id, 'only_officer'))
-        return
-    users = get_all_users(chat_id)
-    mentions = [f"<a href='tg://user?id={u}'>🌌</a>" for u in users[:50]]
-    await update.message.reply_text(get_text(user_id, chat_id, 'tb') + " ".join(mentions), parse_mode=ParseMode.HTML)
-
-async def all_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
-    user_id = update.effective_user.id
-    if not is_officer(user_id, chat_id):
-        await update.message.reply_text(get_text(user_id, chat_id, 'only_officer'))
-        return
-    users = get_all_users(chat_id)
-    mentions = [f"<a href='tg://user?id={u}'>👤</a>" for u in users[:30]]
-    await update.message.reply_text(get_text(user_id, chat_id, 'all') + " ".join(mentions), parse_mode=ParseMode.HTML)
-
+# --- Статистика ---
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
@@ -636,12 +683,12 @@ async def myprofile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cur.execute("SELECT ally_code FROM users WHERE id=? AND chat_id=?", (user_id, chat_id))
     row = cur.fetchone()
     if not row or not row[0]:
-        await update.message.reply_text("❌ Спочатку прив'яжи Ally Code через `/setally`", parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text(get_text(user_id, chat_id, 'no_ally'), parse_mode=ParseMode.MARKDOWN)
         return
     ally_code = row[0]
     url = f"https://swgoh.gg/p/{ally_code}/"
     await update.message.reply_text(
-        f"👤 **Твій профіль SWGOH.gg**\n\n🔗 [Відкрити профіль]({url})\n\nAlly Code: `{ally_code}`",
+        get_text(user_id, chat_id, 'profile_self', url=url, code=ally_code),
         parse_mode=ParseMode.MARKDOWN,
         disable_web_page_preview=True
     )
@@ -658,25 +705,27 @@ async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         cur.execute("SELECT ally_code FROM users WHERE username LIKE ? AND chat_id=?", (f"%{username}%", chat_id))
         row = cur.fetchone()
         if not row or not row[0]:
-            await update.message.reply_text("❌ Гравець не прив'язав Ally Code")
+            await update.message.reply_text(get_text(user_id, chat_id, 'user_no_ally'))
             return
         ally_code = row[0]
         url = f"https://swgoh.gg/p/{ally_code}/"
-        await update.message.reply_text(f"👤 **Профіль гравця @{username}**\n\n🔗 [Відкрити профіль]({url})", parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
+        await update.message.reply_text(get_text(user_id, chat_id, 'profile_link', name=f"@{username}", url=url), parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
     else:
         ally_code = target.replace("-", "")
         if not ally_code.isdigit() or len(ally_code) not in (9,10):
-            await update.message.reply_text("❌ Невірний Ally Code (9-10 цифр)")
+            await update.message.reply_text(get_text(user_id, chat_id, 'invalid_ally'))
             return
         url = f"https://swgoh.gg/p/{ally_code}/"
         await update.message.reply_text(f"👤 **Профіль SWGOH.gg**\n\n🔗 [Відкрити профіль]({url})\n\nAlly Code: `{ally_code}`", parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
+# ========== ЗАПУСК ==========
 def main():
     global app, loop
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     app = Application.builder().token(TOKEN).build()
 
+    # Діалоги
     app.add_handler(ConversationHandler(
         entry_points=[CommandHandler("setally", setally_start)],
         states={WAITING_ALLY: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_setally)]},
@@ -703,20 +752,22 @@ def main():
         fallbacks=[CommandHandler("cancel", cancel)]
     ))
 
+    # Команди
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("language", language_choice))
     app.add_handler(CommandHandler("support", support))
+    app.add_handler(CommandHandler("timezone", set_timezone))
     app.add_handler(CallbackQueryHandler(set_language_callback, pattern="lang_"))
     app.add_handler(CommandHandler("init", init))
     app.add_handler(CommandHandler("register", register))
     app.add_handler(CommandHandler("mystat", mystat))
     app.add_handler(CommandHandler("myprofile", myprofile))
     app.add_handler(CommandHandler("profile", profile_cmd))
-    app.add_handler(CommandHandler("energy", energy))
     app.add_handler(CommandHandler("raid", raid))
     app.add_handler(CommandHandler("tw", tw))
     app.add_handler(CommandHandler("tb", tb))
     app.add_handler(CommandHandler("all", all_users))
+    app.add_handler(CommandHandler("energy", energy))
     app.add_handler(CommandHandler("stats", stats))
     app.add_handler(CommandHandler("active", active))
     app.add_handler(CommandHandler("officers", officers))
