@@ -4,6 +4,7 @@
   },
   "deploy": {
     "numReplicas": 1,
-    "restartPolicyType": "ALWAYS"
+    "restartPolicyType": "ALWAYS",
+    "startCommand": "python bot.py"
   }
 }
