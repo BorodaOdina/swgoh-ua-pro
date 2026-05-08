@@ -253,10 +253,7 @@ async def inactive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for uid, username, last_active in inactive_users[:20]:
         inactive_days = (now() - last_active) // 86400
         name = username or str(uid)
-        if username:
-            text += f"• @{username}: {inactive_days} днів\n"
-        else:
-            text += f"• {name}: {inactive_days} днів\n"
+        text += f"• {name}: {inactive_days} днів\n"
 
     await update.message.reply_text(text)
 
@@ -301,14 +298,9 @@ async def officers(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if username:
             officer_list.append(f"👑 @{username}")
         else:
-            # запасний варіант – просто посилання без ніка
-            officer_list.append(f"👑 [користувач](tg://user?id={uid})")
+            officer_list.append(f"👑 Користувач")   # без markdown, без ID
 
-    await update.message.reply_text(
-        "👑 ОФІЦЕРИ:\n" + "\n".join(officer_list),
-        parse_mode=ParseMode.MARKDOWN,
-        disable_web_page_preview=True
-    )
+    await update.message.reply_text("👑 ОФІЦЕРИ:\n" + "\n".join(officer_list))
 
 async def tip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tips = [
