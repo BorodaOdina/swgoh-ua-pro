@@ -85,7 +85,6 @@ TEXTS = {
                  "🔗 Прив'язали Ally Code: {linked}",
         'setally_usage': "❌ Приклад: `/setally 746197475`",
         'invalid_ally': "❌ Невірний Ally Code (9-10 цифр)",
-        'ally_not_found': "❌ Профіль не знайдено на swgoh.gg. Перевір Ally Code.",
         'ally_saved': "✅ Ally Code `{code}` прив'язаний!\n\n🔗 [Переглянути профіль]({url})",
         'profile_link': "👤 **Профіль гравця {name}**\n\n🔗 [Відкрити профіль]({url})",
         'profile_self': "👤 **Твій профіль SWGOH.gg**\n\n🔗 [Відкрити профіль]({url})\n\nAlly Code: `{code}`",
@@ -143,7 +142,6 @@ TEXTS = {
                  "🔗 Привязали Ally Code: {linked}",
         'setally_usage': "❌ Пример: `/setally 746197475`",
         'invalid_ally': "❌ Неверный Ally Code (9-10 цифр)",
-        'ally_not_found': "❌ Профиль не найден на swgoh.gg. Проверь Ally Code.",
         'ally_saved': "✅ Ally Code `{code}` привязан!\n\n🔗 [Перейти к профилю]({url})",
         'profile_link': "👤 **Профиль игрока {name}**\n\n🔗 [Открыть профиль]({url})",
         'profile_self': "👤 **Твой профиль SWGOH.gg**\n\n🔗 [Открыть профиль]({url})\n\nAlly Code: `{code}`",
@@ -201,7 +199,6 @@ TEXTS = {
                  "🔗 Linked Ally Code: {linked}",
         'setally_usage': "❌ Example: `/setally 746197475`",
         'invalid_ally': "❌ Invalid Ally Code (9-10 digits)",
-        'ally_not_found': "❌ Profile not found on swgoh.gg. Check Ally Code.",
         'ally_saved': "✅ Ally Code `{code}` linked!\n\n🔗 [View profile]({url})",
         'profile_link': "👤 **Profile of {name}**\n\n🔗 [Open profile]({url})",
         'profile_self': "👤 **Your SWGOH.gg profile**\n\n🔗 [Open profile]({url})\n\nAlly Code: `{code}`",
@@ -279,21 +276,8 @@ def set_reminder_hour(chat_id, hour):
     cur.execute("INSERT OR REPLACE INTO guild_settings (chat_id, reminder_hour) VALUES (?, ?)", (chat_id, hour))
     conn.commit()
 
-# ========== SWGOH.GG (ТІЛЬКИ ПЕРЕВІРКА ТА ПОСИЛАННЯ) ==========
-async def check_swgoh_profile(ally_code: str):
-    ally_code = ally_code.replace("-", "")
-    if not ally_code.isdigit() or len(ally_code) not in (9,10):
-        return None
-    url = f"https://swgoh.gg/p/{ally_code}/"
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=10) as resp:
-                if resp.status == 200:
-                    return url
-                else:
-                    return None
-    except:
-        return None
+# ========== SWGOH.GG (тільки посилання, без перевірки) ==========
+# Функція check_swgoh_profile не використовується, видалена.
 
 # ========== НАГАДУВАННЯ ==========
 scheduler = BackgroundScheduler()
@@ -424,7 +408,7 @@ async def mystat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         time_str = f"{diff // 86400} днів тому"
     await update.message.reply_text(f"📊 ТВОЯ СТАТИСТИКА\n\nРоль: {role}\nОстання активність: {time_str}")
 
-# ========== SWGOH КОМАНДИ (ТІЛЬКИ ПОСИЛАННЯ) ==========
+# ========== SWGOH КОМАНДИ (БЕЗ ПЕРЕВІРКИ) ==========
 async def setally(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
@@ -436,13 +420,11 @@ async def setally(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(get_text(user_id, chat_id, 'invalid_ally'))
         return
     
-    url = await check_swgoh_profile(ally_code)
-    if not url:
-        await update.message.reply_text(get_text(user_id, chat_id, 'ally_not_found'))
-        return
-    
+    # Зберігаємо код без перевірки
     cur.execute("UPDATE users SET ally_code=? WHERE id=? AND chat_id=?", (ally_code, user_id, chat_id))
     conn.commit()
+    
+    url = f"https://swgoh.gg/p/{ally_code}/"
     await update.message.reply_text(
         get_text(user_id, chat_id, 'ally_saved', code=ally_code, url=url),
         parse_mode=ParseMode.MARKDOWN,
