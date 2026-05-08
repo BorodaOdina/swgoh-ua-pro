@@ -8,7 +8,7 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 
 TOKEN = os.environ.get("TOKEN")
 
-# ========== БАЗА ДАНИХ (с chat_id) ==========
+# ========== БАЗА ДАНИХ ==========
 conn = sqlite3.connect("db.sqlite", check_same_thread=False)
 cur = conn.cursor()
 
@@ -64,7 +64,7 @@ def has_officers(chat_id):
     count = cur.fetchone()[0]
     return count > 0
 
-# ========== КОМАНДЫ ==========
+# ========== КОМАНДИ ==========
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -90,7 +90,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def init(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Стати першим офіцером (тільки якщо офіцерів ще немає)"""
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
     username = update.effective_user.username or update.effective_user.first_name
@@ -229,7 +228,6 @@ async def remove_officer(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ Невірний формат")
             return
 
-    # Не можна зняти останнього офіцера
     officers = get_role_users(chat_id, "officer")
     if len(officers) == 1 and officers[0][0] == target_id:
         await update.message.reply_text("❌ Не можна зняти єдиного офіцера. Спочатку признач іншого через /makeofficer.")
@@ -254,7 +252,11 @@ async def inactive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = f"💤 НЕАКТИВНІ {days}+ ДНІВ:\n\n"
     for uid, username, last_active in inactive_users[:20]:
         inactive_days = (now() - last_active) // 86400
-        text += f"• {username or uid}: {inactive_days} днів\n"
+        name = username or str(uid)
+        if username:
+            text += f"• @{username}: {inactive_days} днів\n"
+        else:
+            text += f"• {name}: {inactive_days} днів\n"
 
     await update.message.reply_text(text)
 
@@ -293,8 +295,20 @@ async def officers(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not rows:
         await update.message.reply_text("ℹ️ Немає призначених офіцерів. Використай /init, щоб стати першим.")
         return
-    mentions = [f"<a href='tg://user?id={uid}'>👑 {uid}</a>" for uid, _ in rows]
-    await update.message.reply_text("👑 ОФІЦЕРИ:\n" + "\n".join(mentions), parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+
+    officer_list = []
+    for uid, username in rows:
+        if username:
+            officer_list.append(f"👑 @{username}")
+        else:
+            # запасний варіант – просто посилання без ніка
+            officer_list.append(f"👑 [користувач](tg://user?id={uid})")
+
+    await update.message.reply_text(
+        "👑 ОФІЦЕРИ:\n" + "\n".join(officer_list),
+        parse_mode=ParseMode.MARKDOWN,
+        disable_web_page_preview=True
+    )
 
 async def tip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tips = [
