@@ -61,11 +61,12 @@ TEXTS = {
                  "/tb - Territory Battle (з позначкою всіх)\n"
                  "/all - всіх покликати\n"
                  "/energy - нагадати про енергію (з позначкою всіх)\n"
-                 "/makeofficer @user - призначити офіцера\n"
+                 "/makeofficer @user або відповідь - призначити офіцера\n"
                  "/removeofficer @user - зняти офіцера\n"
                  "/inactive [дні] - список неактивних\n"
                  "/setremind <година:хвилина> - змінити час нагадування\n"
-                 "/timezone <зміщення> - налаштувати часовий пояс (за замовчуванням 3)\n\n"
+                 "/timezone <зміщення> - налаштувати часовий пояс\n"
+                 "/restart - перезапустити бота\n\n"
                  "📊 СТАТИСТИКА:\n"
                  "/stats - статистика гільдії\n"
                  "/active - активні сьогодні\n"
@@ -106,6 +107,8 @@ TEXTS = {
         'cancel': "❌ Дію скасовано.",
         'timezone_set': "✅ Часовий пояс змінено на UTC{tz:+d}",
         'timezone_usage': "❌ Приклад: `/timezone 3` (для України)",
+        'restart_ok': "🔄 Перезапуск бота... База даних збережена.",
+        'restart_only_officer': "❌ Тільки офіцери можуть перезапустити бота",
     },
     'ru': {
         'start': "🤖 SWGOH GUILD BOT\n\n"
@@ -122,11 +125,12 @@ TEXTS = {
                  "/tb - Territory Battle (с отметкой всех)\n"
                  "/all - призвать всех\n"
                  "/energy - напомнить об энергии (с отметкой всех)\n"
-                 "/makeofficer @user - назначить офицера\n"
+                 "/makeofficer @user или ответ - назначить офицера\n"
                  "/removeofficer @user - снять офицера\n"
                  "/inactive [дни] - список неактивных\n"
                  "/setremind <час:минута> - изменить время напоминания\n"
-                 "/timezone <смещение> - настроить часовой пояс (по умолчанию 3)\n\n"
+                 "/timezone <смещение> - настроить часовой пояс\n"
+                 "/restart - перезапустить бота\n\n"
                  "📊 СТАТИСТИКА:\n"
                  "/stats - статистика гильдии\n"
                  "/active - активные сегодня\n"
@@ -167,6 +171,8 @@ TEXTS = {
         'cancel': "❌ Действие отменено.",
         'timezone_set': "✅ Часовой пояс изменён на UTC{tz:+d}",
         'timezone_usage': "❌ Пример: `/timezone 3` (для Украины)",
+        'restart_ok': "🔄 Перезапуск бота... База данных сохранена.",
+        'restart_only_officer': "❌ Только офицеры могут перезапустить бота",
     },
     'en': {
         'start': "🤖 SWGOH GUILD BOT\n\n"
@@ -183,11 +189,12 @@ TEXTS = {
                  "/tb - Territory Battle (mentions all)\n"
                  "/all - mention everyone\n"
                  "/energy - remind about guild energy (mentions all)\n"
-                 "/makeofficer @user - appoint an officer\n"
+                 "/makeofficer @user or reply - appoint an officer\n"
                  "/removeofficer @user - remove an officer\n"
                  "/inactive [days] - list of inactive players\n"
                  "/setremind <hour:minute> - change reminder time\n"
-                 "/timezone <offset> - set timezone (default 3)\n\n"
+                 "/timezone <offset> - set timezone\n"
+                 "/restart - restart the bot\n\n"
                  "📊 STATISTICS:\n"
                  "/stats - guild statistics\n"
                  "/active - active today\n"
@@ -228,6 +235,8 @@ TEXTS = {
         'cancel': "❌ Action cancelled.",
         'timezone_set': "✅ Timezone changed to UTC{tz:+d}",
         'timezone_usage': "❌ Example: `/timezone 3` (for Ukraine)",
+        'restart_ok': "🔄 Restarting bot... Database saved.",
+        'restart_only_officer': "❌ Only officers can restart the bot",
     }
 }
 
@@ -393,6 +402,15 @@ async def set_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn.commit()
     await update.message.reply_text(get_text(user_id, chat_id, 'timezone_set', tz=tz))
 
+async def restart_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
+    if not is_officer(user_id, chat_id):
+        await update.message.reply_text(get_text(user_id, chat_id, 'restart_only_officer'))
+        return
+    await update.message.reply_text(get_text(user_id, chat_id, 'restart_ok'))
+    os._exit(0)
+
 async def init(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
@@ -430,7 +448,6 @@ async def mystat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         time_str = f"{diff // 86400} днів тому"
     await update.message.reply_text(f"📊 ТВОЯ СТАТИСТИКА\n\nРоль: {role}\nОстання активність: {time_str}")
 
-# --- Команди з позначкою всіх ---
 async def mention_all(chat_id, title, emoji):
     users = get_all_users(chat_id)
     if not users:
@@ -511,37 +528,53 @@ async def process_setally(update: Update, context: ContextTypes.DEFAULT_TYPE, al
     return ConversationHandler.END
 
 async def makeofficer_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_officer(update.effective_user.id, update.effective_chat.id):
-        await update.message.reply_text(get_text(update.effective_user.id, update.effective_chat.id, 'only_officer'))
+    user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
+    
+    if not is_officer(user_id, chat_id):
+        await update.message.reply_text(get_text(user_id, chat_id, 'only_officer'))
         return ConversationHandler.END
+    
     if context.args:
         target = context.args[0]
         return await process_makeofficer(update, context, target)
-    else:
-        await update.message.reply_text("👑 Надішли @username або Telegram ID користувача, якого хочеш призначити офіцером.\n/cancel - скасувати")
-        return WAITING_MAKEOFFICER
+    
+    if update.message.reply_to_message:
+        target_user = update.message.reply_to_message.from_user
+        target_id = target_user.id
+        set_role(target_id, chat_id, "officer")
+        await update.message.reply_text(f"👑 Користувач {target_user.first_name} призначений офіцером!")
+        return ConversationHandler.END
+    
+    await update.message.reply_text("👑 Надішли @username або **відповідь на повідомлення** користувача, якого хочеш призначити офіцером.\n\nАбо напиши /cancel", parse_mode=ParseMode.MARKDOWN)
+    return WAITING_MAKEOFFICER
 
 async def process_makeofficer(update: Update, context: ContextTypes.DEFAULT_TYPE, target=None):
+    chat_id = update.effective_chat.id
     if target is None:
         target = update.message.text.strip()
-    chat_id = update.effective_chat.id
+    
     if target.startswith("@"):
         username = target[1:]
         cur.execute("SELECT id FROM users WHERE username LIKE ? AND chat_id=?", (f"%{username}%", chat_id))
         row = cur.fetchone()
         if not row:
-            await update.message.reply_text("❌ Користувача не знайдено. Спочатку він має зареєструватись через /register")
+            await update.message.reply_text(f"❌ Користувача @{username} не знайдено в базі даних.\n\n💡 Йому потрібно спочатку зареєструватися через команду /register")
             return WAITING_MAKEOFFICER
         target_id = row[0]
-    else:
-        try:
-            target_id = int(target)
-        except ValueError:
-            await update.message.reply_text("❌ Невірний формат. Використовуй @username або ID")
-            return WAITING_MAKEOFFICER
-    set_role(target_id, chat_id, "officer")
-    await update.message.reply_text(f"👑 Користувач призначений офіцером!")
-    return ConversationHandler.END
+        set_role(target_id, chat_id, "officer")
+        await update.message.reply_text(f"👑 Користувач @{username} призначений офіцером!")
+        return ConversationHandler.END
+    
+    cur.execute("SELECT id FROM users WHERE username LIKE ? AND chat_id=?", (f"%{target}%", chat_id))
+    row = cur.fetchone()
+    if row:
+        set_role(row[0], chat_id, "officer")
+        await update.message.reply_text(f"👑 Користувач призначений офіцером!")
+        return ConversationHandler.END
+    
+    await update.message.reply_text(f"❌ Користувача '{target}' не знайдено. Він має зареєструватися через /register")
+    return WAITING_MAKEOFFICER
 
 async def removeofficer_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_officer(update.effective_user.id, update.effective_chat.id):
@@ -644,7 +677,6 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("❌ Дію скасовано.")
     return ConversationHandler.END
 
-# --- Статистика ---
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
@@ -718,14 +750,12 @@ async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         url = f"https://swgoh.gg/p/{ally_code}/"
         await update.message.reply_text(f"👤 **Профіль SWGOH.gg**\n\n🔗 [Відкрити профіль]({url})\n\nAlly Code: `{ally_code}`", parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
-# ========== ЗАПУСК ==========
 def main():
     global app, loop
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     app = Application.builder().token(TOKEN).build()
 
-    # Діалоги
     app.add_handler(ConversationHandler(
         entry_points=[CommandHandler("setally", setally_start)],
         states={WAITING_ALLY: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_setally)]},
@@ -752,11 +782,11 @@ def main():
         fallbacks=[CommandHandler("cancel", cancel)]
     ))
 
-    # Команди
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("language", language_choice))
     app.add_handler(CommandHandler("support", support))
     app.add_handler(CommandHandler("timezone", set_timezone))
+    app.add_handler(CommandHandler("restart", restart_bot))
     app.add_handler(CallbackQueryHandler(set_language_callback, pattern="lang_"))
     app.add_handler(CommandHandler("init", init))
     app.add_handler(CommandHandler("register", register))
