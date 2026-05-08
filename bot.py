@@ -12,7 +12,6 @@ TOKEN = os.environ.get("TOKEN")
 conn = sqlite3.connect("db.sqlite", check_same_thread=False)
 cur = conn.cursor()
 
-# Таблица users теперь привязана к чату
 cur.execute("""
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER,
@@ -30,7 +29,7 @@ def now():
     return int(time.time())
 
 def add_user(uid, chat_id, username):
-    cur.execute("INSERT OR IGNORE INTO users (id, chat_id, username, role, last_active) VALUES (?, ?, ?, 'player', ?)", 
+    cur.execute("INSERT OR IGNORE INTO users (id, chat_id, username, role, last_active) VALUES (?, ?, ?, 'player', ?)",
                 (uid, chat_id, username, now()))
     conn.commit()
 
@@ -52,8 +51,8 @@ def set_role(uid, chat_id, role):
     conn.commit()
 
 def get_role_users(chat_id, role):
-    cur.execute("SELECT id FROM users WHERE chat_id=? AND role=?", (chat_id, role))
-    return [row[0] for row in cur.fetchall()]
+    cur.execute("SELECT id, username FROM users WHERE chat_id=? AND role=?", (chat_id, role))
+    return cur.fetchall()
 
 def get_inactive_users(chat_id, days):
     limit = now() - days * 86400
@@ -68,7 +67,6 @@ def has_officers(chat_id):
 # ========== КОМАНДЫ ==========
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
     await update.message.reply_text(
         "🤖 SWGOH UA GUILD BOT\n\n"
         "👤 ОСНОВНІ КОМАНДИ:\n"
@@ -82,28 +80,26 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/all - всіх покликати\n"
         "/donate - нагадати про донат\n"
         "/makeofficer @user - призначити офіцера\n"
+        "/removeofficer @user - зняти офіцера\n"
         "/inactive 7 - список неактивних\n\n"
         "📊 СТАТИСТИКА:\n"
         "/stats - статистика гільдії\n"
         "/active - активні сьогодні\n"
         "/officers - список офіцерів\n\n"
-        "🔐 Перший офіцер: /init"
+        "🔐 Перший офіцер: /init (якщо офіцерів ще немає)"
     )
 
 async def init(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Стать первым офицером в этой группе (только если офицеров ещё нет)"""
+    """Стати першим офіцером (тільки якщо офіцерів ще немає)"""
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
     username = update.effective_user.username or update.effective_user.first_name
 
-    # Проверяем, есть ли уже офицеры в этом чате
     if has_officers(chat_id):
         await update.message.reply_text("❌ У цій групі вже є офіцери. Звернись до них, щоб отримати роль.")
         return
 
-    # Регистрируем пользователя, если ещё не зарегистрирован
     add_user(user_id, chat_id, username)
-    # Назначаем офицером
     set_role(user_id, chat_id, "officer")
     await update.message.reply_text("👑 Ти став першим офіцером цієї гільдії! Тепер ти можеш призначати інших через /makeofficer.")
 
@@ -207,6 +203,41 @@ async def make_officer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     set_role(target_id, chat_id, "officer")
     await update.message.reply_text(f"👑 Користувач призначений офіцером!")
 
+async def remove_officer(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    if not is_officer(update.effective_user.id, chat_id):
+        await update.message.reply_text("❌ Тільки офіцери можуть знімати офіцерів")
+        return
+
+    if not context.args:
+        await update.message.reply_text("❌ Використання: /removeofficer @username або /removeofficer telegram_id")
+        return
+
+    target = context.args[0]
+    if target.startswith("@"):
+        username = target[1:]
+        cur.execute("SELECT id FROM users WHERE username LIKE ? AND chat_id=?", (f"%{username}%", chat_id))
+        row = cur.fetchone()
+        if not row:
+            await update.message.reply_text("❌ Користувача не знайдено")
+            return
+        target_id = row[0]
+    else:
+        try:
+            target_id = int(target)
+        except ValueError:
+            await update.message.reply_text("❌ Невірний формат")
+            return
+
+    # Не можна зняти останнього офіцера
+    officers = get_role_users(chat_id, "officer")
+    if len(officers) == 1 and officers[0][0] == target_id:
+        await update.message.reply_text("❌ Не можна зняти єдиного офіцера. Спочатку признач іншого через /makeofficer.")
+        return
+
+    set_role(target_id, chat_id, "player")
+    await update.message.reply_text(f"👤 Користувач більше не офіцер.")
+
 async def inactive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     if not is_officer(update.effective_user.id, chat_id):
@@ -258,12 +289,12 @@ async def active(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def officers(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
-    users = get_role_users(chat_id, "officer")
-    if not users:
+    rows = get_role_users(chat_id, "officer")
+    if not rows:
         await update.message.reply_text("ℹ️ Немає призначених офіцерів. Використай /init, щоб стати першим.")
         return
-    mentions = [f"<a href='tg://user?id={u}'>👑</a>" for u in users]
-    await update.message.reply_text("👑 ОФІЦЕРИ:\n" + " ".join(mentions), parse_mode=ParseMode.HTML)
+    mentions = [f"<a href='tg://user?id={uid}'>👑 {uid}</a>" for uid, _ in rows]
+    await update.message.reply_text("👑 ОФІЦЕРИ:\n" + "\n".join(mentions), parse_mode=ParseMode.HTML, disable_web_page_preview=True)
 
 async def tip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tips = [
@@ -281,7 +312,7 @@ def main():
     app = Application.builder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("init", init))          # ← нова команда
+    app.add_handler(CommandHandler("init", init))
     app.add_handler(CommandHandler("register", register))
     app.add_handler(CommandHandler("mystat", mystat))
     app.add_handler(CommandHandler("tip", tip))
@@ -292,6 +323,7 @@ def main():
     app.add_handler(CommandHandler("all", all_users))
     app.add_handler(CommandHandler("donate", donate))
     app.add_handler(CommandHandler("makeofficer", make_officer))
+    app.add_handler(CommandHandler("removeofficer", remove_officer))
     app.add_handler(CommandHandler("inactive", inactive))
 
     app.add_handler(CommandHandler("stats", stats))
