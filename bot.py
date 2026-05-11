@@ -828,6 +828,17 @@ def main():
     asyncio.set_event_loop(loop)
     app = Application.builder().token(TOKEN).build()
 
+    # Додаємо обробник помилок
+    async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+        logger.error(f"Exception while handling an update: {context.error}")
+        try:
+            if update and hasattr(update, 'effective_message'):
+                await update.effective_message.reply_text("❌ Сталася помилка, спробуйте ще раз.")
+        except:
+            pass
+    
+    app.add_error_handler(error_handler)
+
     app.add_handler(ConversationHandler(
         entry_points=[CommandHandler("setally", setally_start)],
         states={WAITING_ALLY: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_setally)]},
@@ -876,7 +887,7 @@ def main():
 
     schedule_reminder()
     logger.info("✅ Бот запущений! Готовий працювати в багатьох групах.")
-    app.run_polling()
+    app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
     main()
