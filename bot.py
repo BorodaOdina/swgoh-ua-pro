@@ -10,8 +10,6 @@ from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler, ContextTypes,
     ConversationHandler, MessageHandler, filters
 )
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
 
 # Налаштування логування
 logging.basicConfig(
@@ -197,7 +195,7 @@ TEXTS = {
         'remind_set': "✅ Время напоминания изменено на {hour:02d}:{minute:02d}",
         'remind_invalid': "❌ Используй формат: `20` или `20:30`",
         'remind_usage': "❌ Пример: `/setremind 20` или `/setremind 20:30`",
-        'ask_ally_code': "🔢 Отправь Ally Code (9-10 цифр, без дефисов).",
+        'ask_ally_code': "🔢 Отправь Ally Code (9-10 цифр, без дефисов).\n/cancel - отменить",
         'cancel': "❌ Действие отменено.",
         'timezone_set': "✅ Часовой пояс изменён на UTC{tz:+d}",
         'timezone_usage': "❌ Пример: `/timezone 3` (для Украины)",
@@ -274,7 +272,7 @@ TEXTS = {
         'remind_set': "✅ Reminder time changed to {hour:02d}:{minute:02d}",
         'remind_invalid': "❌ Use format: `20` or `20:30`",
         'remind_usage': "❌ Example: `/setremind 20` or `/setremind 20:30`",
-        'ask_ally_code': "🔢 Send Ally Code (9-10 digits, no hyphens).",
+        'ask_ally_code': "🔢 Send Ally Code (9-10 digits, no hyphens).\n/cancel - cancel",
         'cancel': "❌ Action cancelled.",
         'timezone_set': "✅ Timezone changed to UTC{tz:+d}",
         'timezone_usage': "❌ Example: `/timezone 3` (for Ukraine)",
@@ -373,8 +371,6 @@ def is_reminder_enabled(chat_id):
     return row[0] if row else 1
 
 def set_reminder_enabled(chat_id, enabled):
-    cur.execute("INSERT OR REPLACE INTO guild_settings (chat_id, reminder_enabled) VALUES (?, ?) WHERE chat_id=?", (chat_id, enabled, chat_id))
-    # Перевіряємо чи є запис
     cur.execute("SELECT chat_id FROM guild_settings WHERE chat_id=?", (chat_id,))
     if cur.fetchone():
         cur.execute("UPDATE guild_settings SET reminder_enabled=? WHERE chat_id=?", (enabled, chat_id))
@@ -382,19 +378,10 @@ def set_reminder_enabled(chat_id, enabled):
         cur.execute("INSERT INTO guild_settings (chat_id, reminder_enabled) VALUES (?, ?)", (chat_id, enabled))
     conn.commit()
 
-def find_user_by_username(chat_id, username):
-    """Пошук користувача за username"""
-    search_term = username.replace("@", "").strip()
-    cur.execute(
-        "SELECT id, username, first_name FROM users WHERE chat_id=? AND (username LIKE ? OR first_name LIKE ? OR LOWER(username) = LOWER(?))", 
-        (chat_id, f"%{search_term}%", f"%{search_term}%", search_term)
-    )
-    return cur.fetchall()
-
-scheduler = AsyncIOScheduler()
 app = None
 
-async def send_daily_reminder():
+async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
+    """Щоденне нагадування - викликається кожну хвилину"""
     if app is None:
         return
     chat_ids = get_all_chat_ids()
@@ -482,9 +469,7 @@ async def restart_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(get_text(user_id, chat_id, 'restart_only_officer'))
         return
     await update.message.reply_text(get_text(user_id, chat_id, 'restart_ok'))
-    # Закриваємо з'єднання з БД перед перезапуском
     conn.close()
-    scheduler.shutdown()
     await app.stop()
     await asyncio.sleep(2)
     os._exit(0)
@@ -544,7 +529,6 @@ async def mention_all(chat_id, title, emoji):
     if not users:
         return "❌ Немає зареєстрованих гравців"
     
-    # Telegram лімітує згадки в одному повідомленні
     mentions = [f"<a href='tg://user?id={u}'>{emoji}</a>" for u in users[:50]]
     return title + " ".join(mentions)
 
@@ -662,10 +646,8 @@ async def process_makeofficer(update: Update, context: ContextTypes.DEFAULT_TYPE
     if target is None:
         target = update.message.text.strip()
     
-    # Очищаємо @ якщо є
     username = target.replace("@", "").strip()
     
-    # Шукаємо користувача
     cur.execute(
         "SELECT id, username, first_name FROM users WHERE chat_id=? AND (LOWER(username) = LOWER(?) OR LOWER(first_name) LIKE LOWER(?))",
         (chat_id, username, f"%{username}%")
@@ -681,7 +663,6 @@ async def process_makeofficer(update: Update, context: ContextTypes.DEFAULT_TYPE
     
     target_id, target_username, target_first_name = found
     
-    # Перевіряємо чи не офіцер вже
     if is_officer(target_id, chat_id):
         display_name = f"@{target_username}" if target_username else target_first_name
         await update.message.reply_text(
@@ -741,12 +722,10 @@ async def process_removeofficer(update: Update, context: ContextTypes.DEFAULT_TY
     target_id, target_username, target_first_name = found
     display_name = f"@{target_username}" if target_username else target_first_name
     
-    # Не можна зняти себе
     if target_id == user_id:
         await update.message.reply_text(get_text(user_id, chat_id, 'removeofficer_self'))
         return WAITING_REMOVEOFFICER
     
-    # Перевірка на останнього офіцера
     officers = get_role_users(chat_id, "officer")
     if len(officers) == 1:
         await update.message.reply_text(get_text(user_id, chat_id, 'removeofficer_last'))
@@ -961,9 +940,8 @@ def main():
     app.add_handler(CommandHandler("active", active))
     app.add_handler(CommandHandler("officers", officers))
 
-    # Додаємо щохвилинну перевірку для нагадувань
-    scheduler.add_job(send_daily_reminder, CronTrigger(minute='*'))
-    scheduler.start()
+    # Використовуємо вбудований JobQueue замість APScheduler
+    app.job_queue.run_repeating(send_daily_reminder, interval=60, first=5)
     
     logger.info("✅ Бот запущений! Готовий працювати в багатьох групах.")
     app.run_polling()
