@@ -10,6 +10,7 @@ from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler, ContextTypes,
     ConversationHandler, MessageHandler, filters
 )
+from apscheduler.schedulers.background import BackgroundScheduler
 
 # Налаштування логування
 logging.basicConfig(
@@ -379,9 +380,10 @@ def set_reminder_enabled(chat_id, enabled):
     conn.commit()
 
 app = None
+loop = None
 
-async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
-    """Щоденне нагадування - викликається кожну хвилину"""
+async def send_daily_reminder_logic():
+    """Щоденне нагадування - логіка"""
     if app is None:
         return
     chat_ids = get_all_chat_ids()
@@ -407,6 +409,14 @@ async def send_daily_reminder(context: ContextTypes.DEFAULT_TYPE):
                 await app.bot.send_message(chat_id=chat_id, text=energy_text, parse_mode=ParseMode.MARKDOWN)
         except Exception as e:
             logger.error(f"Error in reminder for chat_id {chat_id}: {e}")
+
+def schedule_reminder():
+    """Запуск нагадування з BackgroundScheduler"""
+    def run_coro():
+        asyncio.run_coroutine_threadsafe(send_daily_reminder_logic(), loop)
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(run_coro, 'cron', minute='*')
+    scheduler.start()
 
 async def language_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
@@ -891,7 +901,9 @@ async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 def main():
-    global app
+    global app, loop
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     app = Application.builder().token(TOKEN).build()
 
     app.add_handler(ConversationHandler(
@@ -940,9 +952,7 @@ def main():
     app.add_handler(CommandHandler("active", active))
     app.add_handler(CommandHandler("officers", officers))
 
-    # Використовуємо вбудований JobQueue замість APScheduler
-    app.job_queue.run_repeating(send_daily_reminder, interval=60, first=5)
-    
+    schedule_reminder()
     logger.info("✅ Бот запущений! Готовий працювати в багатьох групах.")
     app.run_polling()
 
