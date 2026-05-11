@@ -214,83 +214,6 @@ TEXTS = {
         'reminder_disabled': "❌ Ежедневное напоминание выключено",
         'reminder_on': "🟢 Включено",
         'reminder_off': "🔴 Выключено",
-    },
-    'en': {
-        'start': "🤖 SWGOH GUILD BOT\n\n"
-                 "👤 BASIC COMMANDS:\n"
-                 "/register - register in the guild\n"
-                 "/mystat - my statistics\n"
-                 "/setally <code> - link Ally Code\n"
-                 "/myprofile - my swgoh.gg profile\n"
-                 "/profile @user - another player's profile\n\n"
-                 "👑 OFFICER COMMANDS:\n"
-                 "/init - become the first officer\n"
-                 "/raid - raid announcement (mentions all)\n"
-                 "/tw - Territory War (mentions all)\n"
-                 "/tb - Territory Battle (mentions all)\n"
-                 "/all - mention everyone\n"
-                 "/energy - remind about guild energy (mentions all)\n"
-                 "/makeofficer @user - appoint an officer\n"
-                 "/removeofficer @user - remove an officer\n"
-                 "/inactive [days] - list of inactive players\n"
-                 "/setremind <hour:minute> - change reminder time\n"
-                 "/toggleremind - enable/disable reminder\n"
-                 "/timezone <offset> - set timezone\n"
-                 "/restart - restart the bot\n\n"
-                 "📊 STATISTICS:\n"
-                 "/stats - guild statistics\n"
-                 "/active - active today\n"
-                 "/officers - list of officers\n\n"
-                 "⏰ Daily reminder: {reminder_status}\n"
-                 "Time: {remind_hour:02d}:{remind_minute:02d}\n\n"
-                 "🌐 Change language: /language",
-        'register_ok': "✅ You are registered in the guild!",
-        'already_registered': "✅ You are already registered in the guild!",
-        'not_registered': "❌ First use /register",
-        'only_officer': "❌ Only officers can use this command",
-        'raid': "🚨 RAID STARTED!\n",
-        'tw': "⚔️ TERRITORY WAR!\n",
-        'tb': "🌌 TERRITORY BATTLE!\n",
-        'all': "🔥 GUILD ATTENTION!\n",
-        'energy': "🔋 DON'T FORGET TO DONATE GUILD ENERGY!\n",
-        'no_officers': "ℹ️ No officers assigned. Use /init to become the first.",
-        'officers': "👑 OFFICERS:\n",
-        'no_active': "ℹ️ No active players in the last 24 hours",
-        'no_inactive': "ℹ️ No inactive players for {days} days",
-        'inactive_title': "💤 INACTIVE {days}+ DAYS:\n\n",
-        'stats': "📊 GUILD STATISTICS\n\n"
-                 "👥 Total: {total}\n"
-                 "👑 Officers: {officers}\n"
-                 "🔥 Active today: {active_today}\n"
-                 "🔗 Linked Ally Code: {linked}",
-        'setally_usage': "❌ Use: `/setally 746197475`",
-        'invalid_ally': "❌ Invalid Ally Code (9-10 digits)",
-        'ally_saved': "✅ Ally Code `{code}` linked!\n\n🔗 [View profile]({url})",
-        'profile_link': "👤 **Profile of {name}**\n\n🔗 [Open profile]({url})",
-        'profile_self': "👤 **Your SWGOH.gg profile**\n\n🔗 [Open profile]({url})\n\nAlly Code: `{code}`",
-        'no_ally': "❌ First link your Ally Code via `/setally`",
-        'user_no_ally': "❌ Player has not linked Ally Code",
-        'remind_set': "✅ Reminder time changed to {hour:02d}:{minute:02d}",
-        'remind_invalid': "❌ Use format: `20` or `20:30`",
-        'remind_usage': "❌ Example: `/setremind 20` or `/setremind 20:30`",
-        'ask_ally_code': "🔢 Send Ally Code (9-10 digits, no hyphens).\n/cancel - cancel",
-        'cancel': "❌ Action cancelled.",
-        'timezone_set': "✅ Timezone changed to UTC{tz:+d}",
-        'timezone_usage': "❌ Example: `/timezone 3` (for Ukraine)",
-        'restart_ok': "🔄 Restarting bot...\nThis may take a few seconds.",
-        'restart_only_officer': "❌ Only officers can restart the bot",
-        'makeofficer_not_found': "❌ User {user} not found in guild database.\nThey need to register first with /register",
-        'makeofficer_success': "👑 {user} is now a guild officer!",
-        'already_officer': "❌ {user} is already an officer",
-        'makeofficer_ask': "👑 Use @username to appoint an officer:\n/makeofficer @username\n\nOr just write @username in chat",
-        'removeofficer_success': "👤 {user} is no longer an officer",
-        'removeofficer_self': "❌ You cannot remove yourself from officer position",
-        'removeofficer_last': "❌ Cannot remove the last officer. First appoint another via /makeofficer",
-        'removeofficer_ask': "👤 Send @username of the officer to remove:\n/removeofficer @username",
-        'reminder_enabled': "✅ Daily reminder enabled",
-        'reminder_disabled': "❌ Daily reminder disabled",
-        'reminder_on': "🟢 Enabled",
-        'reminder_off': "🔴 Disabled",
     }
 }
 
@@ -422,10 +345,9 @@ async def language_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("🇺🇦 Українська", callback_data="lang_ua")],
         [InlineKeyboardButton("🇷🇺 Русский", callback_data="lang_ru")],
-        [InlineKeyboardButton("🇬🇧 English", callback_data="lang_en")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("🌐 Оберіть мову / Выберите язык / Choose language:", reply_markup=reply_markup)
+    await update.message.reply_text("🌐 Оберіть мову / Выберите язык:", reply_markup=reply_markup)
 
 async def set_language_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
