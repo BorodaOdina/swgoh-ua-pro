@@ -355,11 +355,27 @@ async def set_language_callback(update: Update, context: ContextTypes.DEFAULT_TY
     user_id = query.from_user.id
     chat_id = query.message.chat_id
     lang = query.data.split("_")[1]
+    
+    # Перевіряємо чи мова дійсно змінилася
+    cur.execute("SELECT language FROM users WHERE id=? AND chat_id=?", (user_id, chat_id))
+    row = cur.fetchone()
+    old_lang = row[0] if row else None
+    
+    if old_lang == lang:
+        # Мова не змінилася, просто підтверджуємо
+        await query.answer(f"✅ Мова вже встановлена")
+        return
+    
     set_language(user_id, chat_id, lang)
     hour, minute = get_reminder_time(chat_id)
     reminder_status = get_text(user_id, chat_id, 'reminder_on') if is_reminder_enabled(chat_id) else get_text(user_id, chat_id, 'reminder_off')
     start_text = get_text(user_id, chat_id, 'start', remind_hour=hour, remind_minute=minute, reminder_status=reminder_status)
-    await query.edit_message_text(start_text, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
+    
+    try:
+        await query.edit_message_text(start_text, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
+    except Exception as e:
+        logger.error(f"Error editing message: {e}")
+        await query.answer(f"✅ Мова змінена на {lang}")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -831,11 +847,6 @@ def main():
     # Додаємо обробник помилок
     async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
         logger.error(f"Exception while handling an update: {context.error}")
-        try:
-            if update and hasattr(update, 'effective_message'):
-                await update.effective_message.reply_text("❌ Сталася помилка, спробуйте ще раз.")
-        except:
-            pass
     
     app.add_error_handler(error_handler)
 
