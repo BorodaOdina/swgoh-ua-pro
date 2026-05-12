@@ -30,6 +30,7 @@ WAITING_MAKEOFFICER = 2
 WAITING_REMOVEOFFICER = 3
 WAITING_INACTIVE_DAYS = 4
 WAITING_SETREMIND = 5
+WAITING_REMOVE = 6
 
 conn = sqlite3.connect("db.sqlite", check_same_thread=False)
 cur = conn.cursor()
@@ -78,6 +79,7 @@ TEXTS = {
                  "/energy - нагадати про енергію (з позначкою всіх)\n"
                  "/makeofficer @user - призначити офіцера\n"
                  "/removeofficer @user - зняти офіцера\n"
+                 "/remove @user - видалити гравця з бази\n"
                  "/inactive [дні] - список неактивних\n"
                  "/setremind <година:хвилина> - змінити час нагадування\n"
                  "/toggleremind - увімкнути/вимкнути нагадування\n"
@@ -153,6 +155,7 @@ TEXTS = {
                  "/energy - напомнить об энергии (с отметкой всех)\n"
                  "/makeofficer @user - назначить офицера\n"
                  "/removeofficer @user - снять офицера\n"
+                 "/remove @user - удалить игрока из базы\n"
                  "/inactive [дни] - список неактивных\n"
                  "/setremind <час:минута> - изменить время напоминания\n"
                  "/toggleremind - включить/выключить напоминание\n"
@@ -374,7 +377,6 @@ async def set_language_callback(update: Update, context: ContextTypes.DEFAULT_TY
     try:
         await query.edit_message_text(start_text, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
     except Exception as e:
-        # Якщо повідомлення не змінилося - нічого не робимо
         pass
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -675,6 +677,58 @@ async def process_removeofficer(update: Update, context: ContextTypes.DEFAULT_TY
     )
     return ConversationHandler.END
 
+async def remove_user_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
+    
+    if not is_officer(user_id, chat_id):
+        await update.message.reply_text(get_text(user_id, chat_id, 'only_officer'))
+        return ConversationHandler.END
+    
+    if context.args:
+        target = context.args[0]
+        return await process_remove_user(update, context, target)
+    
+    await update.message.reply_text(
+        "👤 Надішли @username гравця, якого треба видалити з бази:\n"
+        "/remove @username\n\n"
+        "/cancel - скасувати"
+    )
+    return WAITING_REMOVE
+
+async def process_remove_user(update: Update, context: ContextTypes.DEFAULT_TYPE, target=None):
+    chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
+    
+    if target is None:
+        target = update.message.text.strip()
+    
+    username = target.replace("@", "").strip()
+    
+    cur.execute(
+        "SELECT id, username, first_name FROM users WHERE chat_id=? AND (LOWER(username) = LOWER(?) OR LOWER(first_name) LIKE LOWER(?))",
+        (chat_id, username, f"%{username}%")
+    )
+    found = cur.fetchone()
+    
+    if not found:
+        await update.message.reply_text(f"❌ Гравця @{username} не знайдено в базі")
+        return WAITING_REMOVE
+    
+    target_id, target_username, target_first_name = found
+    display_name = f"@{target_username}" if target_username else target_first_name
+    
+    # Не можна видалити офіцера
+    if is_officer(target_id, chat_id):
+        await update.message.reply_text(f"❌ Не можна видалити офіцера. Спочатку зніми його через /removeofficer")
+        return ConversationHandler.END
+    
+    cur.execute("DELETE FROM users WHERE id=? AND chat_id=?", (target_id, chat_id))
+    conn.commit()
+    
+    await update.message.reply_text(f"✅ Гравця {display_name} видалено з бази гільдії!")
+    return ConversationHandler.END
+
 async def inactive_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_officer(update.effective_user.id, update.effective_chat.id):
         await update.message.reply_text(get_text(update.effective_user.id, update.effective_chat.id, 'only_officer'))
@@ -852,6 +906,11 @@ def main():
     app.add_handler(ConversationHandler(
         entry_points=[CommandHandler("removeofficer", removeofficer_start)],
         states={WAITING_REMOVEOFFICER: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_removeofficer)]},
+        fallbacks=[CommandHandler("cancel", cancel)]
+    ))
+    app.add_handler(ConversationHandler(
+        entry_points=[CommandHandler("remove", remove_user_start)],
+        states={WAITING_REMOVE: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_remove_user)]},
         fallbacks=[CommandHandler("cancel", cancel)]
     ))
     app.add_handler(ConversationHandler(
