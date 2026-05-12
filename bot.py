@@ -81,8 +81,7 @@ TEXTS = {
                  "/inactive [дні] - список неактивних\n"
                  "/setremind <година:хвилина> - змінити час нагадування\n"
                  "/toggleremind - увімкнути/вимкнути нагадування\n"
-                 "/timezone <зміщення> - налаштувати часовий пояс\n"
-                 "/restart - перезапустити бота\n\n"
+                 "/timezone <зміщення> - налаштувати часовий пояс\n\n"
                  "📊 СТАТИСТИКА:\n"
                  "/stats - статистика гільдії\n"
                  "/active - активні сьогодні\n"
@@ -123,8 +122,6 @@ TEXTS = {
         'cancel': "❌ Дію скасовано.",
         'timezone_set': "✅ Часовий пояс змінено на UTC{tz:+d}",
         'timezone_usage': "❌ Приклад: `/timezone 3` (для України)",
-        'restart_ok': "🔄 Перезапуск бота...\nЦе може зайняти кілька секунд.",
-        'restart_only_officer': "❌ Тільки офіцери можуть перезапустити бота",
         'makeofficer_not_found': "❌ Користувача {user} не знайдено в базі гільдії.\nЙому потрібно спочатку зареєструватися через /register",
         'makeofficer_success': "👑 {user} тепер офіцер гільдії!",
         'already_officer': "❌ {user} вже є офіцером",
@@ -137,6 +134,7 @@ TEXTS = {
         'reminder_disabled': "❌ Щоденне нагадування вимкнено",
         'reminder_on': "🟢 Увімкнено",
         'reminder_off': "🔴 Вимкнено",
+        'language_changed': "✅ Мову змінено на 🇺🇦 Українська",
     },
     'ru': {
         'start': "🤖 SWGOH GUILD BOT\n\n"
@@ -158,8 +156,7 @@ TEXTS = {
                  "/inactive [дни] - список неактивных\n"
                  "/setremind <час:минута> - изменить время напоминания\n"
                  "/toggleremind - включить/выключить напоминание\n"
-                 "/timezone <смещение> - настроить часовой пояс\n"
-                 "/restart - перезапустить бота\n\n"
+                 "/timezone <смещение> - настроить часовой пояс\n\n"
                  "📊 СТАТИСТИКА:\n"
                  "/stats - статистика гильдии\n"
                  "/active - активные сегодня\n"
@@ -200,8 +197,6 @@ TEXTS = {
         'cancel': "❌ Действие отменено.",
         'timezone_set': "✅ Часовой пояс изменён на UTC{tz:+d}",
         'timezone_usage': "❌ Пример: `/timezone 3` (для Украины)",
-        'restart_ok': "🔄 Перезапуск бота...\nЭто может занять несколько секунд.",
-        'restart_only_officer': "❌ Только офицеры могут перезапустить бота",
         'makeofficer_not_found': "❌ Пользователь {user} не найден в базе гильдии.\nЕму нужно сначала зарегистрироваться через /register",
         'makeofficer_success': "👑 {user} теперь офицер гильдии!",
         'already_officer': "❌ {user} уже является офицером",
@@ -214,6 +209,7 @@ TEXTS = {
         'reminder_disabled': "❌ Ежедневное напоминание выключено",
         'reminder_on': "🟢 Включено",
         'reminder_off': "🔴 Выключено",
+        'language_changed': "✅ Язык изменён на 🇷🇺 Русский",
     }
 }
 
@@ -221,6 +217,10 @@ def get_text(uid, chat_id, key, **kwargs):
     cur.execute("SELECT language FROM users WHERE id=? AND chat_id=?", (uid, chat_id))
     row = cur.fetchone()
     lang = row[0] if row else 'ua'
+    text = TEXTS.get(lang, TEXTS['ua']).get(key, TEXTS['ua'][key])
+    return text.format(**kwargs) if kwargs else text
+
+def get_text_by_lang(lang, key, **kwargs):
     text = TEXTS.get(lang, TEXTS['ua']).get(key, TEXTS['ua'][key])
     return text.format(**kwargs) if kwargs else text
 
@@ -351,31 +351,31 @@ async def language_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def set_language_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
     user_id = query.from_user.id
     chat_id = query.message.chat_id
     lang = query.data.split("_")[1]
     
-    # Перевіряємо чи мова дійсно змінилася
-    cur.execute("SELECT language FROM users WHERE id=? AND chat_id=?", (user_id, chat_id))
-    row = cur.fetchone()
-    old_lang = row[0] if row else None
+    # Спочатку оновлюємо мову в БД
+    cur.execute("SELECT id FROM users WHERE id=? AND chat_id=?", (user_id, chat_id))
+    if not cur.fetchone():
+        username = query.from_user.username or ""
+        first_name = query.from_user.first_name or ""
+        add_user(user_id, chat_id, username, first_name, lang)
+    else:
+        set_language(user_id, chat_id, lang)
     
-    if old_lang == lang:
-        # Мова не змінилася, просто підтверджуємо
-        await query.answer(f"✅ Мова вже встановлена")
-        return
+    # Отримуємо текст новою мовою
+    await query.answer(get_text_by_lang(lang, 'language_changed'))
     
-    set_language(user_id, chat_id, lang)
     hour, minute = get_reminder_time(chat_id)
-    reminder_status = get_text(user_id, chat_id, 'reminder_on') if is_reminder_enabled(chat_id) else get_text(user_id, chat_id, 'reminder_off')
-    start_text = get_text(user_id, chat_id, 'start', remind_hour=hour, remind_minute=minute, reminder_status=reminder_status)
+    reminder_status = get_text_by_lang(lang, 'reminder_on') if is_reminder_enabled(chat_id) else get_text_by_lang(lang, 'reminder_off')
+    start_text = get_text_by_lang(lang, 'start', remind_hour=hour, remind_minute=minute, reminder_status=reminder_status)
     
     try:
         await query.edit_message_text(start_text, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
     except Exception as e:
-        logger.error(f"Error editing message: {e}")
-        await query.answer(f"✅ Мова змінена на {lang}")
+        # Якщо повідомлення не змінилося - нічого не робимо
+        pass
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -386,8 +386,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await language_choice(update, context)
         return
     hour, minute = get_reminder_time(chat_id)
-    reminder_status = get_text(user_id, chat_id, 'reminder_on') if is_reminder_enabled(chat_id) else get_text(user_id, chat_id, 'reminder_off')
-    start_text = get_text(user_id, chat_id, 'start', remind_hour=hour, remind_minute=minute, reminder_status=reminder_status)
+    lang = row[0]
+    reminder_status = get_text_by_lang(lang, 'reminder_on') if is_reminder_enabled(chat_id) else get_text_by_lang(lang, 'reminder_off')
+    start_text = get_text_by_lang(lang, 'start', remind_hour=hour, remind_minute=minute, reminder_status=reminder_status)
     await update.message.reply_text(start_text, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
 async def set_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -409,18 +410,6 @@ async def set_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cur.execute("UPDATE guild_settings SET timezone=? WHERE chat_id=?", (tz, chat_id))
     conn.commit()
     await update.message.reply_text(get_text(user_id, chat_id, 'timezone_set', tz=tz))
-
-async def restart_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
-    user_id = update.effective_user.id
-    if not is_officer(user_id, chat_id):
-        await update.message.reply_text(get_text(user_id, chat_id, 'restart_only_officer'))
-        return
-    await update.message.reply_text(get_text(user_id, chat_id, 'restart_ok'))
-    conn.close()
-    await app.stop()
-    await asyncio.sleep(2)
-    os._exit(0)
 
 async def init(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -879,7 +868,6 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("language", language_choice))
     app.add_handler(CommandHandler("timezone", set_timezone))
-    app.add_handler(CommandHandler("restart", restart_bot))
     app.add_handler(CommandHandler("toggleremind", toggleremind))
     app.add_handler(CallbackQueryHandler(set_language_callback, pattern="lang_"))
     app.add_handler(CommandHandler("init", init))
