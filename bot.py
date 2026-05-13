@@ -31,7 +31,8 @@ WAITING_SETREMIND = 3
 WAITING_REMOVE = 4
 WAITING_TIMEZONE = 5
 
-conn = sqlite3.connect("db.sqlite", check_same_thread=False)
+os.makedirs("data", exist_ok=True)
+conn = sqlite3.connect("data/db.sqlite", check_same_thread=False)
 cur = conn.cursor()
 
 # Стара структура бази — всі дані збережуться
