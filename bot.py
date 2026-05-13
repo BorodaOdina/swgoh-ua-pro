@@ -34,6 +34,7 @@ WAITING_TIMEZONE = 5
 conn = sqlite3.connect("db.sqlite", check_same_thread=False)
 cur = conn.cursor()
 
+# Стара структура бази — всі дані збережуться
 cur.execute("""
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER,
@@ -42,6 +43,7 @@ CREATE TABLE IF NOT EXISTS users (
     first_name TEXT,
     role TEXT DEFAULT 'player',
     last_active INTEGER,
+    ally_code TEXT,
     language TEXT DEFAULT 'ua',
     PRIMARY KEY (id, chat_id)
 )
@@ -93,7 +95,7 @@ TEXTS = {
         'tw': "⚔️ TERRITORY WAR!\n",
         'tb': "🌌 TERRITORY BATTLE!\n",
         'all': "🔥 УВАГА ГІЛЬДІЇ!\n",
-        'energy': "⏰ Увага!\nНе забуваємо сдати енку!\n",
+        'energy': "⚠️ Увага!\nНе забуваємо сдати енку!!!\n",
         'no_officers': "ℹ️ Немає призначених офіцерів. Використай /init, щоб стати першим.",
         'officers': "👑 ОФІЦЕРИ:\n",
         'stats': "📊 СТАТИСТИКА ГІЛЬДІЇ\n\n"
@@ -102,7 +104,6 @@ TEXTS = {
                  "🔥 Активні сьогодні: {active_today}",
         'remind_set': "✅ Час нагадування змінено на {hour:02d}:{minute:02d}",
         'remind_invalid': "❌ Використай формат: `20` або `20:30`",
-        'remind_usage': "❌ Приклад: `/setremind 20` або `/setremind 20:30`",
         'cancel': "❌ Дію скасовано.",
         'timezone_set': "✅ Часовий пояс змінено на UTC{tz:+d}",
         'timezone_usage': "🕐 Введіть часовий пояс (число від -12 до 14)\nНаприклад: 3 для України (UTC+3)\n\n/cancel - скасувати",
@@ -152,7 +153,7 @@ TEXTS = {
         'tw': "⚔️ TERRITORY WAR!\n",
         'tb': "🌌 TERRITORY BATTLE!\n",
         'all': "🔥 ВНИМАНИЕ ГИЛЬДИИ!\n",
-        'energy': "⏰ Напоминаю!\nСдавайте энергию!\n",
+        'energy': "⚠️ Внимание!\nНе забываем сдать энку!!!\n",
         'no_officers': "ℹ️ Нет назначенных офицеров. Используй /init, чтобы стать первым.",
         'officers': "👑 ОФИЦЕРЫ:\n",
         'stats': "📊 СТАТИСТИКА ГИЛЬДИИ\n\n"
@@ -161,7 +162,6 @@ TEXTS = {
                  "🔥 Активны сегодня: {active_today}",
         'remind_set': "✅ Время напоминания изменено на {hour:02d}:{minute:02d}",
         'remind_invalid': "❌ Используй формат: `20` или `20:30`",
-        'remind_usage': "❌ Пример: `/setremind 20` или `/setremind 20:30`",
         'cancel': "❌ Действие отменено.",
         'timezone_set': "✅ Часовой пояс изменён на UTC{tz:+d}",
         'timezone_usage': "🕐 Введите часовой пояс (число от -12 до 14)\nНапример: 3 для Украины (UTC+3)\n\n/cancel - отменить",
@@ -290,7 +290,7 @@ async def send_daily_reminder_logic():
                 cur.execute("SELECT language FROM users WHERE chat_id=? LIMIT 1", (chat_id,))
                 row = cur.fetchone()
                 lang = row[0] if row else 'ua'
-                energy_text = TEXTS.get(lang, TEXTS['ua']).get('energy', "⏰ Нагадую!\nЗадавайте енергію!\n")
+                energy_text = TEXTS.get(lang, TEXTS['ua']).get('energy', "⚠️ Увага!\nНе забуваємо сдати енку!!!\n")
                 await app.bot.send_message(chat_id=chat_id, text=energy_text, parse_mode=ParseMode.MARKDOWN)
         except Exception as e:
             logger.error(f"Error in reminder for chat_id {chat_id}: {e}")
