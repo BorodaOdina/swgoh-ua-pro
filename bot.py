@@ -25,12 +25,10 @@ logger = logging.getLogger(__name__)
 
 TOKEN = os.environ.get("TOKEN")
 
-WAITING_ALLY = 1
-WAITING_MAKEOFFICER = 2
-WAITING_REMOVEOFFICER = 3
-WAITING_INACTIVE_DAYS = 4
-WAITING_SETREMIND = 5
-WAITING_REMOVE = 6
+WAITING_MAKEOFFICER = 1
+WAITING_REMOVEOFFICER = 2
+WAITING_SETREMIND = 3
+WAITING_REMOVE = 4
 
 conn = sqlite3.connect("db.sqlite", check_same_thread=False)
 cur = conn.cursor()
@@ -43,7 +41,6 @@ CREATE TABLE IF NOT EXISTS users (
     first_name TEXT,
     role TEXT DEFAULT 'player',
     last_active INTEGER,
-    ally_code TEXT,
     language TEXT DEFAULT 'ua',
     PRIMARY KEY (id, chat_id)
 )
@@ -52,7 +49,7 @@ CREATE TABLE IF NOT EXISTS users (
 cur.execute("""
 CREATE TABLE IF NOT EXISTS guild_settings (
     chat_id INTEGER PRIMARY KEY,
-    reminder_hour INTEGER DEFAULT 20,
+    reminder_hour INTEGER DEFAULT 12,
     reminder_minute INTEGER DEFAULT 0,
     timezone INTEGER DEFAULT 3,
     last_reminder_date TEXT DEFAULT '',
@@ -66,10 +63,8 @@ TEXTS = {
         'start': "🤖 SWGOH UA GUILD BOT\n\n"
                  "👤 ОСНОВНІ КОМАНДИ:\n"
                  "/register - реєстрація\n"
-                 "/mystat - моя статистика\n"
-                 "/setally <код> - прив'язати Ally Code\n"
-                 "/myprofile - мій профіль swgoh.gg\n"
-                 "/profile @user - профіль іншого гравця\n\n"
+                 "/members - список гравців\n"
+                 "/mystat - моя статистика\n\n"
                  "👑 КОМАНДИ ОФІЦЕРІВ:\n"
                  "/init - стати першим офіцером\n"
                  "/raid - рейд (з позначкою всіх)\n"
@@ -80,13 +75,11 @@ TEXTS = {
                  "/makeofficer @user - призначити офіцера\n"
                  "/removeofficer @user - зняти офіцера\n"
                  "/remove @user - видалити гравця з бази\n"
-                 "/inactive [дні] - список неактивних\n"
                  "/setremind <година:хвилина> - змінити час нагадування\n"
                  "/toggleremind - увімкнути/вимкнути нагадування\n"
                  "/timezone <зміщення> - налаштувати часовий пояс\n\n"
                  "📊 СТАТИСТИКА:\n"
                  "/stats - статистика гільдії\n"
-                 "/active - активні сьогодні\n"
                  "/officers - список офіцерів\n\n"
                  "⏰ Щоденне нагадування: {reminder_status}\n"
                  "Час: {remind_hour:02d}:{remind_minute:02d}\n\n"
@@ -99,35 +92,22 @@ TEXTS = {
         'tw': "⚔️ TERRITORY WAR!\n",
         'tb': "🌌 TERRITORY BATTLE!\n",
         'all': "🔥 УВАГА ГІЛЬДІЇ!\n",
-        'energy': "🔋 НЕ ЗАБУДЬ СДАТИ ЕНЕРГІЮ ГІЛЬДІЇ!\n",
+        'energy': "⏰ Нагадую!\nЗадавайте енергію!\n",
         'no_officers': "ℹ️ Немає призначених офіцерів. Використай /init, щоб стати першим.",
         'officers': "👑 ОФІЦЕРИ:\n",
-        'no_active': "ℹ️ Немає активних за 24 години",
-        'no_inactive': "ℹ️ Немає неактивних гравців за {days} днів",
-        'inactive_title': "💤 НЕАКТИВНІ {days}+ ДНІВ:\n\n",
         'stats': "📊 СТАТИСТИКА ГІЛЬДІЇ\n\n"
                  "👥 Всього: {total}\n"
                  "👑 Офіцерів: {officers}\n"
-                 "🔥 Активні сьогодні: {active_today}\n"
-                 "🔗 Прив'язали Ally Code: {linked}",
-        'setally_usage': "❌ Використай: `/setally 746197475`",
-        'invalid_ally': "❌ Невірний Ally Code (9-10 цифр)",
-        'ally_saved': "✅ Ally Code `{code}` прив'язаний!\n\n🔗 [Переглянути профіль]({url})",
-        'profile_link': "👤 **Профіль гравця {name}**\n\n🔗 [Відкрити профіль]({url})",
-        'profile_self': "👤 **Твій профіль SWGOH.gg**\n\n🔗 [Відкрити профіль]({url})\n\nAlly Code: `{code}`",
-        'no_ally': "❌ Спочатку прив'яжи Ally Code через `/setally`",
-        'user_no_ally': "❌ Гравець не прив'язав Ally Code",
+                 "🔥 Активні сьогодні: {active_today}",
         'remind_set': "✅ Час нагадування змінено на {hour:02d}:{minute:02d}",
         'remind_invalid': "❌ Використай формат: `20` або `20:30`",
         'remind_usage': "❌ Приклад: `/setremind 20` або `/setremind 20:30`",
-        'ask_ally_code': "🔢 Надішли Ally Code (9-10 цифр, без дефісів).\n/cancel - скасувати",
         'cancel': "❌ Дію скасовано.",
         'timezone_set': "✅ Часовий пояс змінено на UTC{tz:+d}",
         'timezone_usage': "❌ Приклад: `/timezone 3` (для України)",
         'makeofficer_not_found': "❌ Користувача {user} не знайдено в базі гільдії.\nЙому потрібно спочатку зареєструватися через /register",
         'makeofficer_success': "👑 {user} тепер офіцер гільдії!",
         'already_officer': "❌ {user} вже є офіцером",
-        'makeofficer_ask': "👑 Використай @username щоб призначити офіцера:\n/makeofficer @username\n\nАбо просто напиши @username в чаті",
         'removeofficer_success': "👤 {user} більше не офіцер",
         'removeofficer_self': "❌ Ти не можеш зняти себе з посади офіцера",
         'removeofficer_last': "❌ Не можна зняти останнього офіцера. Спочатку признач іншого через /makeofficer",
@@ -142,10 +122,8 @@ TEXTS = {
         'start': "🤖 SWGOH GUILD BOT\n\n"
                  "👤 ОСНОВНЫЕ КОМАНДЫ:\n"
                  "/register - регистрация\n"
-                 "/mystat - моя статистика\n"
-                 "/setally <код> - привязать Ally Code\n"
-                 "/myprofile - мой профиль swgoh.gg\n"
-                 "/profile @user - профиль другого игрока\n\n"
+                 "/members - список игроков\n"
+                 "/mystat - моя статистика\n\n"
                  "👑 КОМАНДЫ ОФИЦЕРОВ:\n"
                  "/init - стать первым офицером\n"
                  "/raid - рейд (с отметкой всех)\n"
@@ -156,13 +134,11 @@ TEXTS = {
                  "/makeofficer @user - назначить офицера\n"
                  "/removeofficer @user - снять офицера\n"
                  "/remove @user - удалить игрока из базы\n"
-                 "/inactive [дни] - список неактивных\n"
                  "/setremind <час:минута> - изменить время напоминания\n"
                  "/toggleremind - включить/выключить напоминание\n"
                  "/timezone <смещение> - настроить часовой пояс\n\n"
                  "📊 СТАТИСТИКА:\n"
                  "/stats - статистика гильдии\n"
-                 "/active - активные сегодня\n"
                  "/officers - список офицеров\n\n"
                  "⏰ Ежедневное напоминание: {reminder_status}\n"
                  "Время: {remind_hour:02d}:{remind_minute:02d}\n\n"
@@ -175,35 +151,22 @@ TEXTS = {
         'tw': "⚔️ TERRITORY WAR!\n",
         'tb': "🌌 TERRITORY BATTLE!\n",
         'all': "🔥 ВНИМАНИЕ ГИЛЬДИИ!\n",
-        'energy': "🔋 НЕ ЗАБУДЬ СДАТЬ ЭНЕРГИЮ ГИЛЬДИИ!\n",
+        'energy': "⏰ Напоминаю!\nСдавайте энергию!\n",
         'no_officers': "ℹ️ Нет назначенных офицеров. Используй /init, чтобы стать первым.",
         'officers': "👑 ОФИЦЕРЫ:\n",
-        'no_active': "ℹ️ Нет активных за 24 часа",
-        'no_inactive': "ℹ️ Нет неактивных игроков за {days} дней",
-        'inactive_title': "💤 НЕАКТИВНЫЕ {days}+ ДНЕЙ:\n\n",
         'stats': "📊 СТАТИСТИКА ГИЛЬДИИ\n\n"
                  "👥 Всего: {total}\n"
                  "👑 Офицеров: {officers}\n"
-                 "🔥 Активны сегодня: {active_today}\n"
-                 "🔗 Привязали Ally Code: {linked}",
-        'setally_usage': "❌ Используй: `/setally 746197475`",
-        'invalid_ally': "❌ Неверный Ally Code (9-10 цифр)",
-        'ally_saved': "✅ Ally Code `{code}` привязан!\n\n🔗 [Перейти к профилю]({url})",
-        'profile_link': "👤 **Профиль игрока {name}**\n\n🔗 [Открыть профиль]({url})",
-        'profile_self': "👤 **Твой профиль SWGOH.gg**\n\n🔗 [Открыть профиль]({url})\n\nAlly Code: `{code}`",
-        'no_ally': "❌ Сначала привяжи Ally Code через `/setally`",
-        'user_no_ally': "❌ Игрок не привязал Ally Code",
+                 "🔥 Активны сегодня: {active_today}",
         'remind_set': "✅ Время напоминания изменено на {hour:02d}:{minute:02d}",
         'remind_invalid': "❌ Используй формат: `20` или `20:30`",
         'remind_usage': "❌ Пример: `/setremind 20` или `/setremind 20:30`",
-        'ask_ally_code': "🔢 Отправь Ally Code (9-10 цифр, без дефисов).\n/cancel - отменить",
         'cancel': "❌ Действие отменено.",
         'timezone_set': "✅ Часовой пояс изменён на UTC{tz:+d}",
         'timezone_usage': "❌ Пример: `/timezone 3` (для Украины)",
         'makeofficer_not_found': "❌ Пользователь {user} не найден в базе гильдии.\nЕму нужно сначала зарегистрироваться через /register",
         'makeofficer_success': "👑 {user} теперь офицер гильдии!",
         'already_officer': "❌ {user} уже является офицером",
-        'makeofficer_ask': "👑 Используй @username чтобы назначить офицера:\n/makeofficer @username\n\nИли просто напиши @username в чате",
         'removeofficer_success': "👤 {user} больше не офицер",
         'removeofficer_self': "❌ Ты не можешь снять себя с должности офицера",
         'removeofficer_last': "❌ Нельзя снять последнего офицера. Сначала назначь другого через /makeofficer",
@@ -269,11 +232,6 @@ def get_role_users(chat_id, role):
     cur.execute("SELECT id, username, first_name FROM users WHERE chat_id=? AND role=?", (chat_id, role))
     return cur.fetchall()
 
-def get_inactive_users(chat_id, days):
-    limit = now() - days * 86400
-    cur.execute("SELECT id, username, first_name, last_active FROM users WHERE chat_id=? AND last_active < ?", (chat_id, limit))
-    return cur.fetchall()
-
 def has_officers(chat_id):
     cur.execute("SELECT COUNT(*) FROM users WHERE chat_id=? AND role='officer'", (chat_id,))
     count = cur.fetchone()[0]
@@ -286,7 +244,7 @@ def get_all_chat_ids():
 def get_reminder_time(chat_id):
     cur.execute("SELECT reminder_hour, reminder_minute FROM guild_settings WHERE chat_id=?", (chat_id,))
     row = cur.fetchone()
-    return (row[0], row[1]) if row else (20, 0)
+    return (row[0], row[1]) if row else (12, 0)
 
 def set_reminder_time(chat_id, hour, minute):
     cur.execute("INSERT OR REPLACE INTO guild_settings (chat_id, reminder_hour, reminder_minute) VALUES (?, ?, ?)", (chat_id, hour, minute))
@@ -331,7 +289,7 @@ async def send_daily_reminder_logic():
                 cur.execute("SELECT language FROM users WHERE chat_id=? LIMIT 1", (chat_id,))
                 row = cur.fetchone()
                 lang = row[0] if row else 'ua'
-                energy_text = TEXTS.get(lang, TEXTS['ua']).get('energy', "🔋 НЕ ЗАБУДЬ СДАТИ ЕНЕРГІЮ!\n")
+                energy_text = TEXTS.get(lang, TEXTS['ua']).get('energy', "⏰ Нагадую!\nЗадавайте енергію!\n")
                 await app.bot.send_message(chat_id=chat_id, text=energy_text, parse_mode=ParseMode.MARKDOWN)
         except Exception as e:
             logger.error(f"Error in reminder for chat_id {chat_id}: {e}")
@@ -461,6 +419,26 @@ async def mystat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         time_str = f"{diff // 86400} днів тому"
     await update.message.reply_text(f"📊 ТВОЯ СТАТИСТИКА\n\nРоль: {role}\nОстання активність: {time_str}")
 
+async def members(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показати список зареєстрованих гравців у цьому чаті"""
+    chat_id = update.effective_chat.id
+    
+    cur.execute("SELECT username, first_name, role FROM users WHERE chat_id=? ORDER BY role DESC, username ASC", (chat_id,))
+    rows = cur.fetchall()
+    
+    if not rows:
+        await update.message.reply_text("❌ Немає зареєстрованих гравців")
+        return
+    
+    text = f"👥 ГРАВЦІ ГІЛЬДІЇ ({len(rows)}):\n\n"
+    
+    for username, first_name, role in rows:
+        crown = "👑 " if role == "officer" else "• "
+        name = f"@{username}" if username else first_name or "Без імені"
+        text += f"{crown}{name}\n"
+    
+    await update.message.reply_text(text)
+
 async def mention_all(chat_id, title, emoji):
     users = get_all_users(chat_id)
     if not users:
@@ -532,32 +510,6 @@ async def toggleremind(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(get_text(user_id, chat_id, 'reminder_disabled'))
 
 # --- Діалогові команди ---
-async def setally_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if context.args:
-        return await process_setally(update, context, context.args[0])
-    else:
-        await update.message.reply_text(TEXTS['ua']['ask_ally_code'], parse_mode=ParseMode.MARKDOWN)
-        return WAITING_ALLY
-
-async def process_setally(update: Update, context: ContextTypes.DEFAULT_TYPE, ally_code_str=None):
-    if ally_code_str is None:
-        ally_code_str = update.message.text.strip()
-    ally_code = ally_code_str.replace("-", "").replace(" ", "")
-    if not ally_code.isdigit() or len(ally_code) not in (9, 10):
-        await update.message.reply_text("❌ Невірний Ally Code (9-10 цифр). Спробуй ще раз або /cancel")
-        return WAITING_ALLY
-    user_id = update.effective_user.id
-    chat_id = update.effective_chat.id
-    cur.execute("UPDATE users SET ally_code=? WHERE id=? AND chat_id=?", (ally_code, user_id, chat_id))
-    conn.commit()
-    url = f"https://swgoh.gg/p/{ally_code}/"
-    await update.message.reply_text(
-        f"✅ Ally Code `{ally_code}` прив'язаний!\n\n🔗 [Переглянути профіль]({url})",
-        parse_mode=ParseMode.MARKDOWN,
-        disable_web_page_preview=True
-    )
-    return ConversationHandler.END
-
 async def makeofficer_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     chat_id = update.effective_chat.id
@@ -566,14 +518,12 @@ async def makeofficer_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(get_text(user_id, chat_id, 'only_officer'))
         return ConversationHandler.END
     
-    # Якщо це відповідь на повідомлення — одразу призначаємо
     if update.message.reply_to_message:
         target_user = update.message.reply_to_message.from_user
         target_id = target_user.id
         target_username = target_user.username or ""
         target_first_name = target_user.first_name or ""
         
-        # Завжди оновлюємо або створюємо запис в базі
         cur.execute("SELECT id FROM users WHERE id=? AND chat_id=?", (target_id, chat_id))
         if not cur.fetchone():
             add_user(target_id, chat_id, target_username, target_first_name)
@@ -614,14 +564,12 @@ async def process_makeofficer(update: Update, context: ContextTypes.DEFAULT_TYPE
     
     username = target.replace("@", "").strip()
     
-    # Шукаємо точний збіг по username
     cur.execute(
         "SELECT id, username, first_name FROM users WHERE chat_id=? AND LOWER(username) = LOWER(?)",
         (chat_id, username)
     )
     found = cur.fetchone()
     
-    # Якщо не знайшли — шукаємо частковий збіг
     if not found:
         cur.execute(
             "SELECT id, username, first_name FROM users WHERE chat_id=? AND LOWER(username) LIKE LOWER(?)",
@@ -750,7 +698,6 @@ async def process_remove_user(update: Update, context: ContextTypes.DEFAULT_TYPE
     target_id, target_username, target_first_name = found
     display_name = f"@{target_username}" if target_username else target_first_name
     
-    # Не можна видалити офіцера
     if is_officer(target_id, chat_id):
         await update.message.reply_text(f"❌ Не можна видалити офіцера. Спочатку зніми його через /removeofficer")
         return ConversationHandler.END
@@ -759,38 +706,6 @@ async def process_remove_user(update: Update, context: ContextTypes.DEFAULT_TYPE
     conn.commit()
     
     await update.message.reply_text(f"✅ Гравця {display_name} видалено з бази гільдії!")
-    return ConversationHandler.END
-
-async def inactive_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_officer(update.effective_user.id, update.effective_chat.id):
-        await update.message.reply_text(get_text(update.effective_user.id, update.effective_chat.id, 'only_officer'))
-        return ConversationHandler.END
-    if context.args and context.args[0].isdigit():
-        days = int(context.args[0])
-        return await process_inactive(update, context, days)
-    else:
-        await update.message.reply_text("📅 Надішли кількість днів неактивності (наприклад, 7).\n/cancel - скасувати")
-        return WAITING_INACTIVE_DAYS
-
-async def process_inactive(update: Update, context: ContextTypes.DEFAULT_TYPE, days=None):
-    if days is None:
-        try:
-            days = int(update.message.text.strip())
-        except:
-            await update.message.reply_text("❌ Введи число (кількість днів).")
-            return WAITING_INACTIVE_DAYS
-    chat_id = update.effective_chat.id
-    user_id = update.effective_user.id
-    inactive_users = get_inactive_users(chat_id, days)
-    if not inactive_users:
-        await update.message.reply_text(get_text(user_id, chat_id, 'no_inactive', days=days))
-        return ConversationHandler.END
-    text = get_text(user_id, chat_id, 'inactive_title', days=days)
-    for uid, username, first_name, last_active in inactive_users[:20]:
-        inactive_days = (now() - last_active) // 86400
-        name = f"@{username}" if username else first_name or str(uid)
-        text += f"• {name}: {inactive_days} днів\n"
-    await update.message.reply_text(text)
     return ConversationHandler.END
 
 async def setremind_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -832,20 +747,7 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     officers = len(get_role_users(chat_id, "officer"))
     cur.execute("SELECT COUNT(*) FROM users WHERE chat_id=? AND last_active > ?", (chat_id, now() - 86400))
     active_today = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM users WHERE chat_id=? AND ally_code IS NOT NULL", (chat_id,))
-    linked = cur.fetchone()[0]
-    await update.message.reply_text(get_text(user_id, chat_id, 'stats', total=total, officers=officers, active_today=active_today, linked=linked))
-
-async def active(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
-    user_id = update.effective_user.id
-    cur.execute("SELECT id FROM users WHERE chat_id=? AND last_active > ?", (chat_id, now() - 86400))
-    users = [row[0] for row in cur.fetchall()]
-    if not users:
-        await update.message.reply_text(get_text(user_id, chat_id, 'no_active'))
-        return
-    mentions = [f"<a href='tg://user?id={u}'>🔥</a>" for u in users[:50]]
-    await update.message.reply_text(f"🔥 АКТИВНІ ГРАВЦІ ({len(users)}):\n" + " ".join(mentions), parse_mode=ParseMode.HTML)
+    await update.message.reply_text(get_text(user_id, chat_id, 'stats', total=total, officers=officers, active_today=active_today))
 
 async def officers(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -860,59 +762,6 @@ async def officers(update: Update, context: ContextTypes.DEFAULT_TYPE):
         officer_list.append(f"👑 {name}")
     await update.message.reply_text(get_text(user_id, chat_id, 'officers') + "\n".join(officer_list))
 
-async def myprofile(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
-    user_id = update.effective_user.id
-    cur.execute("SELECT ally_code FROM users WHERE id=? AND chat_id=?", (user_id, chat_id))
-    row = cur.fetchone()
-    if not row or not row[0]:
-        await update.message.reply_text(get_text(user_id, chat_id, 'no_ally'), parse_mode=ParseMode.MARKDOWN)
-        return
-    ally_code = row[0]
-    url = f"https://swgoh.gg/p/{ally_code}/"
-    await update.message.reply_text(
-        get_text(user_id, chat_id, 'profile_self', url=url, code=ally_code),
-        parse_mode=ParseMode.MARKDOWN,
-        disable_web_page_preview=True
-    )
-
-async def profile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
-    user_id = update.effective_user.id
-    if not context.args:
-        await update.message.reply_text("❌ Приклад: `/profile @username` або `/profile 746197475`", parse_mode=ParseMode.MARKDOWN)
-        return
-    target = context.args[0]
-    if target.startswith("@"):
-        username = target[1:]
-        cur.execute(
-            "SELECT ally_code, username, first_name FROM users WHERE chat_id=? AND (LOWER(username) = LOWER(?) OR LOWER(first_name) LIKE LOWER(?))",
-            (chat_id, username, f"%{username}%")
-        )
-        row = cur.fetchone()
-        if not row or not row[0]:
-            await update.message.reply_text(get_text(user_id, chat_id, 'user_no_ally'))
-            return
-        ally_code, target_username, target_first_name = row
-        display_name = f"@{target_username}" if target_username else target_first_name
-        url = f"https://swgoh.gg/p/{ally_code}/"
-        await update.message.reply_text(
-            get_text(user_id, chat_id, 'profile_link', name=display_name, url=url),
-            parse_mode=ParseMode.MARKDOWN,
-            disable_web_page_preview=True
-        )
-    else:
-        ally_code = target.replace("-", "")
-        if not ally_code.isdigit() or len(ally_code) not in (9, 10):
-            await update.message.reply_text(get_text(user_id, chat_id, 'invalid_ally'))
-            return
-        url = f"https://swgoh.gg/p/{ally_code}/"
-        await update.message.reply_text(
-            f"👤 **Профіль SWGOH.gg**\n\n🔗 [Відкрити профіль]({url})\n\nAlly Code: `{ally_code}`",
-            parse_mode=ParseMode.MARKDOWN,
-            disable_web_page_preview=True
-        )
-
 def main():
     global app, loop
     loop = asyncio.new_event_loop()
@@ -924,11 +773,6 @@ def main():
     
     app.add_error_handler(error_handler)
 
-    app.add_handler(ConversationHandler(
-        entry_points=[CommandHandler("setally", setally_start)],
-        states={WAITING_ALLY: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_setally)]},
-        fallbacks=[CommandHandler("cancel", cancel)]
-    ))
     app.add_handler(ConversationHandler(
         entry_points=[CommandHandler("makeofficer", makeofficer_start)],
         states={WAITING_MAKEOFFICER: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_makeofficer)]},
@@ -945,11 +789,6 @@ def main():
         fallbacks=[CommandHandler("cancel", cancel)]
     ))
     app.add_handler(ConversationHandler(
-        entry_points=[CommandHandler("inactive", inactive_start)],
-        states={WAITING_INACTIVE_DAYS: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_inactive)]},
-        fallbacks=[CommandHandler("cancel", cancel)]
-    ))
-    app.add_handler(ConversationHandler(
         entry_points=[CommandHandler("setremind", setremind_start)],
         states={WAITING_SETREMIND: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_setremind)]},
         fallbacks=[CommandHandler("cancel", cancel)]
@@ -963,15 +802,13 @@ def main():
     app.add_handler(CommandHandler("init", init))
     app.add_handler(CommandHandler("register", register))
     app.add_handler(CommandHandler("mystat", mystat))
-    app.add_handler(CommandHandler("myprofile", myprofile))
-    app.add_handler(CommandHandler("profile", profile_cmd))
+    app.add_handler(CommandHandler("members", members))
     app.add_handler(CommandHandler("raid", raid))
     app.add_handler(CommandHandler("tw", tw))
     app.add_handler(CommandHandler("tb", tb))
     app.add_handler(CommandHandler("all", all_users))
     app.add_handler(CommandHandler("energy", energy))
     app.add_handler(CommandHandler("stats", stats))
-    app.add_handler(CommandHandler("active", active))
     app.add_handler(CommandHandler("officers", officers))
 
     schedule_reminder()
