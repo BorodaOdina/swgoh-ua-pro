@@ -29,6 +29,7 @@ WAITING_MAKEOFFICER = 1
 WAITING_REMOVEOFFICER = 2
 WAITING_SETREMIND = 3
 WAITING_REMOVE = 4
+WAITING_TIMEZONE = 5
 
 conn = sqlite3.connect("db.sqlite", check_same_thread=False)
 cur = conn.cursor()
@@ -77,7 +78,7 @@ TEXTS = {
                  "/remove @user - видалити гравця з бази\n"
                  "/setremind <година:хвилина> - змінити час нагадування\n"
                  "/toggleremind - увімкнути/вимкнути нагадування\n"
-                 "/timezone <зміщення> - налаштувати часовий пояс\n\n"
+                 "/timezone - налаштувати часовий пояс\n\n"
                  "📊 СТАТИСТИКА:\n"
                  "/stats - статистика гільдії\n"
                  "/officers - список офіцерів\n\n"
@@ -104,7 +105,7 @@ TEXTS = {
         'remind_usage': "❌ Приклад: `/setremind 20` або `/setremind 20:30`",
         'cancel': "❌ Дію скасовано.",
         'timezone_set': "✅ Часовий пояс змінено на UTC{tz:+d}",
-        'timezone_usage': "❌ Приклад: `/timezone 3` (для України)",
+        'timezone_usage': "🕐 Введіть часовий пояс (число від -12 до 14)\nНаприклад: 3 для України (UTC+3)\n\n/cancel - скасувати",
         'makeofficer_not_found': "❌ Користувача {user} не знайдено в базі гільдії.\nЙому потрібно спочатку зареєструватися через /register",
         'makeofficer_success': "👑 {user} тепер офіцер гільдії!",
         'already_officer': "❌ {user} вже є офіцером",
@@ -136,7 +137,7 @@ TEXTS = {
                  "/remove @user - удалить игрока из базы\n"
                  "/setremind <час:минута> - изменить время напоминания\n"
                  "/toggleremind - включить/выключить напоминание\n"
-                 "/timezone <смещение> - настроить часовой пояс\n\n"
+                 "/timezone - настроить часовой пояс\n\n"
                  "📊 СТАТИСТИКА:\n"
                  "/stats - статистика гильдии\n"
                  "/officers - список офицеров\n\n"
@@ -163,7 +164,7 @@ TEXTS = {
         'remind_usage': "❌ Пример: `/setremind 20` или `/setremind 20:30`",
         'cancel': "❌ Действие отменено.",
         'timezone_set': "✅ Часовой пояс изменён на UTC{tz:+d}",
-        'timezone_usage': "❌ Пример: `/timezone 3` (для Украины)",
+        'timezone_usage': "🕐 Введите часовой пояс (число от -12 до 14)\nНапример: 3 для Украины (UTC+3)\n\n/cancel - отменить",
         'makeofficer_not_found': "❌ Пользователь {user} не найден в базе гильдии.\nЕму нужно сначала зарегистрироваться через /register",
         'makeofficer_success': "👑 {user} теперь офицер гильдии!",
         'already_officer': "❌ {user} уже является офицером",
@@ -349,25 +350,41 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     start_text = get_text_by_lang(lang, 'start', remind_hour=hour, remind_minute=minute, reminder_status=reminder_status)
     await update.message.reply_text(start_text, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
-async def set_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
+async def timezone_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Початок діалогу встановлення часового поясу"""
     user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
+    
     if not is_officer(user_id, chat_id):
         await update.message.reply_text(get_text(user_id, chat_id, 'only_officer'))
-        return
-    if not context.args:
-        await update.message.reply_text(get_text(user_id, chat_id, 'timezone_usage'))
-        return
+        return ConversationHandler.END
+    
+    if context.args:
+        return await process_timezone(update, context, context.args[0])
+    
+    await update.message.reply_text(get_text(user_id, chat_id, 'timezone_usage'))
+    return WAITING_TIMEZONE
+
+async def process_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE, tz_str=None):
+    """Обробка введеного часового поясу"""
+    chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
+    
+    if tz_str is None:
+        tz_str = update.message.text.strip()
+    
     try:
-        tz = int(context.args[0])
+        tz = int(tz_str)
         if tz < -12 or tz > 14:
             raise ValueError
     except:
-        await update.message.reply_text("❌ Введіть число від -12 до 14")
-        return
+        await update.message.reply_text("❌ Введіть число від -12 до 14. Наприклад: 3\nАбо /cancel - скасувати")
+        return WAITING_TIMEZONE
+    
     cur.execute("UPDATE guild_settings SET timezone=? WHERE chat_id=?", (tz, chat_id))
     conn.commit()
     await update.message.reply_text(get_text(user_id, chat_id, 'timezone_set', tz=tz))
+    return ConversationHandler.END
 
 async def init(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -793,10 +810,14 @@ def main():
         states={WAITING_SETREMIND: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_setremind)]},
         fallbacks=[CommandHandler("cancel", cancel)]
     ))
+    app.add_handler(ConversationHandler(
+        entry_points=[CommandHandler("timezone", timezone_start)],
+        states={WAITING_TIMEZONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, process_timezone)]},
+        fallbacks=[CommandHandler("cancel", cancel)]
+    ))
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("language", language_choice))
-    app.add_handler(CommandHandler("timezone", set_timezone))
     app.add_handler(CommandHandler("toggleremind", toggleremind))
     app.add_handler(CallbackQueryHandler(set_language_callback, pattern="lang_"))
     app.add_handler(CommandHandler("init", init))
