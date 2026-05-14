@@ -31,10 +31,9 @@ WAITING_SETREMIND = 3
 WAITING_REMOVE = 4
 WAITING_TIMEZONE = 5
 
-# Автовидалення через 5 хвилин (300 секунд)
+# Автовидалення через 5 хвилин
 AUTO_DELETE_SECONDS = 300
 
-# Створюємо папку data якщо її немає
 os.makedirs("data", exist_ok=True)
 conn = sqlite3.connect("data/db.sqlite", check_same_thread=False)
 cur = conn.cursor()
@@ -65,9 +64,8 @@ CREATE TABLE IF NOT EXISTS guild_settings (
 """)
 conn.commit()
 
-# Функції для автовидалення повідомлень
+# Функції автовидалення
 async def delete_after_delay(message, delay: int = AUTO_DELETE_SECONDS):
-    """Видаляє повідомлення через вказану затримку"""
     await asyncio.sleep(delay)
     try:
         await message.delete()
@@ -75,54 +73,45 @@ async def delete_after_delay(message, delay: int = AUTO_DELETE_SECONDS):
         pass
 
 async def send_auto_delete(update: Update, text: str, parse_mode=None, reply_markup=None):
-    """Відправляє повідомлення з автовидаленням"""
     message = await update.message.reply_text(
-        text, 
-        parse_mode=parse_mode, 
-        reply_markup=reply_markup,
-        disable_web_page_preview=True
+        text, parse_mode=parse_mode, reply_markup=reply_markup, disable_web_page_preview=True
     )
     asyncio.create_task(delete_after_delay(message))
     return message
 
 async def send_auto_delete_html(update: Update, text: str):
-    """Відправляє HTML повідомлення з автовидаленням"""
     message = await update.message.reply_text(text, parse_mode=ParseMode.HTML)
     asyncio.create_task(delete_after_delay(message))
     return message
 
 async def send_auto_delete_md(update: Update, text: str):
-    """Відправляє Markdown повідомлення з автовидаленням"""
     message = await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
     asyncio.create_task(delete_after_delay(message))
     return message
 
-# Функція для встановлення команд бота
 async def setup_commands(app: Application):
-    """Встановлює список команд для автодоповнення"""
     commands = [
-        BotCommand("start", "Показати меню / Показать меню"),
-        BotCommand("register", "Реєстрація в гільдії / Регистрация"),
-        BotCommand("members", "Список гравців / Список игроков"),
-        BotCommand("init", "Стати першим офіцером / Стать офицером"),
-        BotCommand("raid", "Рейд (позначити всіх) / Рейд"),
-        BotCommand("tw", "Territory War / ТВ"),
-        BotCommand("tb", "Territory Battle / ТБ"),
-        BotCommand("all", "Покликати всіх / Призвать всех"),
-        BotCommand("energy", "Нагадати про енергію / Энергия"),
-        BotCommand("makeofficer", "Призначити офіцера / Назначить офицера"),
-        BotCommand("removeofficer", "Зняти офіцера / Снять офицера"),
-        BotCommand("remove", "Видалити гравця / Удалить игрока"),
-        BotCommand("setremind", "Змінити час нагадування / Время напоминания"),
-        BotCommand("toggleremind", "Увімкнути/вимкнути нагадування / Вкл/выкл напоминание"),
-        BotCommand("timezone", "Налаштувати часовий пояс / Часовой пояс"),
-        BotCommand("stats", "Статистика гільдії / Статистика"),
-        BotCommand("officers", "Список офіцерів / Список офицеров"),
-        BotCommand("language", "Змінити мову / Сменить язык"),
-        BotCommand("cancel", "Скасувати дію / Отменить"),
+        BotCommand("start", "Показати меню"),
+        BotCommand("register", "Реєстрація в гільдії"),
+        BotCommand("members", "Список гравців"),
+        BotCommand("init", "Стати першим офіцером"),
+        BotCommand("raid", "Рейд (позначити всіх)"),
+        BotCommand("tw", "Territory War"),
+        BotCommand("tb", "Territory Battle"),
+        BotCommand("all", "Покликати всіх"),
+        BotCommand("energy", "Нагадати про енергію"),
+        BotCommand("makeofficer", "Призначити офіцера"),
+        BotCommand("removeofficer", "Зняти офіцера"),
+        BotCommand("remove", "Видалити гравця"),
+        BotCommand("setremind", "Змінити час нагадування"),
+        BotCommand("toggleremind", "Увімкнути/вимкнути нагадування"),
+        BotCommand("timezone", "Налаштувати часовий пояс"),
+        BotCommand("stats", "Статистика гільдії"),
+        BotCommand("officers", "Список офіцерів"),
+        BotCommand("language", "Змінити мову"),
+        BotCommand("cancel", "Скасувати дію"),
     ]
     await app.bot.set_my_commands(commands)
-    logger.info("✅ Команди бота встановлено")
 
 TEXTS = {
     'ua': {
@@ -175,7 +164,7 @@ TEXTS = {
         'removeofficer_success': "👤 {user} більше не офіцер",
         'removeofficer_self': "❌ Ти не можеш зняти себе з посади офіцера",
         'removeofficer_last': "❌ Не можна зняти останнього офіцера. Спочатку признач іншого через /makeofficer",
-        'removeofficer_ask': "👤 Надішли @username кого хочеш зняти з офіцерів:\n/removeofficer @username",
+        'removeofficer_ask': "👤 Надішли @username кого хочеш зняти з офіцерів:\n/removeofficer @username\nАбо дай відповідь на повідомлення офіцера",
         'reminder_enabled': "✅ Щоденне нагадування увімкнено",
         'reminder_disabled': "❌ Щоденне нагадування вимкнено",
         'reminder_on': "🟢 Увімкнено",
@@ -232,7 +221,7 @@ TEXTS = {
         'removeofficer_success': "👤 {user} больше не офицер",
         'removeofficer_self': "❌ Ты не можешь снять себя с должности офицера",
         'removeofficer_last': "❌ Нельзя снять последнего офицера. Сначала назначь другого через /makeofficer",
-        'removeofficer_ask': "👤 Отправь @username кого хочешь снять с офицеров:\n/removeofficer @username",
+        'removeofficer_ask': "👤 Отправь @username кого хочешь снять с офицеров:\n/removeofficer @username\nИли ответь на сообщение офицера",
         'reminder_enabled': "✅ Ежедневное напоминание включено",
         'reminder_disabled': "❌ Ежедневное напоминание выключено",
         'reminder_on': "🟢 Включено",
@@ -329,7 +318,6 @@ app = None
 loop = None
 
 async def send_daily_reminder_logic():
-    """Щоденне нагадування - логіка"""
     if app is None:
         return
     chat_ids = get_all_chat_ids()
@@ -337,7 +325,6 @@ async def send_daily_reminder_logic():
         try:
             if not is_reminder_enabled(chat_id):
                 continue
-                
             hour, minute = get_reminder_time(chat_id)
             local = get_local_time(chat_id)
             if local.tm_hour == hour and local.tm_min == minute:
@@ -358,7 +345,6 @@ async def send_daily_reminder_logic():
             logger.error(f"Error in reminder for chat_id {chat_id}: {e}")
 
 def schedule_reminder():
-    """Запуск нагадування з BackgroundScheduler"""
     def run_coro():
         asyncio.run_coroutine_threadsafe(send_daily_reminder_logic(), loop)
     scheduler = BackgroundScheduler()
@@ -388,14 +374,12 @@ async def set_language_callback(update: Update, context: ContextTypes.DEFAULT_TY
         set_language(user_id, chat_id, lang)
     
     await query.answer(get_text_by_lang(lang, 'language_changed'))
-    
     hour, minute = get_reminder_time(chat_id)
     reminder_status = get_text_by_lang(lang, 'reminder_on') if is_reminder_enabled(chat_id) else get_text_by_lang(lang, 'reminder_off')
     start_text = get_text_by_lang(lang, 'start', remind_hour=hour, remind_minute=minute, reminder_status=reminder_status)
-    
     try:
         await query.edit_message_text(start_text, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
-    except Exception as e:
+    except:
         pass
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -415,24 +399,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def timezone_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     chat_id = update.effective_chat.id
-    
     if not is_officer(user_id, chat_id):
         await send_auto_delete(update, get_text(user_id, chat_id, 'only_officer'))
         return ConversationHandler.END
-    
     if context.args:
         return await process_timezone(update, context, context.args[0])
-    
     await send_auto_delete(update, get_text(user_id, chat_id, 'timezone_usage'))
     return WAITING_TIMEZONE
 
 async def process_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE, tz_str=None):
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
-    
     if tz_str is None:
         tz_str = update.message.text.strip()
-    
     try:
         tz = int(tz_str)
         if tz < -12 or tz > 14:
@@ -440,7 +419,6 @@ async def process_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE, t
     except:
         await send_auto_delete(update, "❌ Введіть число від -12 до 14. Наприклад: 3\nАбо /cancel - скасувати")
         return WAITING_TIMEZONE
-    
     cur.execute("UPDATE guild_settings SET timezone=? WHERE chat_id=?", (tz, chat_id))
     conn.commit()
     await send_auto_delete(update, get_text(user_id, chat_id, 'timezone_set', tz=tz))
@@ -451,11 +429,9 @@ async def init(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     username = update.effective_user.username or ""
     first_name = update.effective_user.first_name or ""
-    
     if has_officers(chat_id):
         await send_auto_delete(update, get_text(user_id, chat_id, 'only_officer'))
         return
-    
     add_user(user_id, chat_id, username, first_name)
     set_role(user_id, chat_id, "officer")
     await send_auto_delete(update, "👑 Ти став першим офіцером цієї гільдії! Тепер ти можеш призначати інших через /makeofficer @username")
@@ -465,48 +441,33 @@ async def register(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     username = update.effective_user.username or ""
     first_name = update.effective_user.first_name or ""
-    
     cur.execute("SELECT id FROM users WHERE id=? AND chat_id=?", (uid, chat_id))
     if cur.fetchone():
         update_last_active(uid, chat_id)
         await send_auto_delete(update, get_text(uid, chat_id, 'already_registered'))
         return
-    
     add_user(uid, chat_id, username, first_name)
     update_last_active(uid, chat_id)
     await send_auto_delete(update, get_text(uid, chat_id, 'register_ok'))
 
 async def members(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Показати список зареєстрованих гравців у цьому чаті"""
     chat_id = update.effective_chat.id
-    
     cur.execute("SELECT username, first_name, role FROM users WHERE chat_id=? ORDER BY role DESC, username ASC", (chat_id,))
     rows = cur.fetchall()
-    
     if not rows:
         await send_auto_delete(update, "❌ Немає зареєстрованих гравців")
         return
-    
     text = f"👥 ГРАВЦІ ГІЛЬДІЇ ({len(rows)}):\n\n"
-    
     for username, first_name, role in rows:
         crown = "👑 " if role == "officer" else "• "
-        # Показуємо ім'я без @
-        if username:
-            name = username
-        elif first_name:
-            name = first_name
-        else:
-            name = "Без імені"
+        name = username if username else first_name or "Без імені"
         text += f"{crown}{name}\n"
-    
     await send_auto_delete(update, text)
 
 async def mention_all(chat_id, title, emoji):
     users = get_all_users(chat_id)
     if not users:
         return "❌ Немає зареєстрованих гравців"
-    
     mentions = [f"<a href='tg://user?id={u}'>{emoji}</a>" for u in users[:50]]
     return title + " ".join(mentions)
 
@@ -558,15 +519,12 @@ async def energy(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def toggleremind(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
-    
     if not is_officer(user_id, chat_id):
         await send_auto_delete(update, get_text(user_id, chat_id, 'only_officer'))
         return
-    
     current = is_reminder_enabled(chat_id)
     new_state = 0 if current else 1
     set_reminder_enabled(chat_id, new_state)
-    
     if new_state:
         await send_auto_delete(update, get_text(user_id, chat_id, 'reminder_enabled'))
     else:
@@ -576,17 +534,14 @@ async def toggleremind(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def makeofficer_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     chat_id = update.effective_chat.id
-    
     if not is_officer(user_id, chat_id):
         await send_auto_delete(update, get_text(user_id, chat_id, 'only_officer'))
         return ConversationHandler.END
-    
     if update.message.reply_to_message:
         target_user = update.message.reply_to_message.from_user
         target_id = target_user.id
         target_username = target_user.username or ""
         target_first_name = target_user.first_name or ""
-        
         cur.execute("SELECT id FROM users WHERE id=? AND chat_id=?", (target_id, chat_id))
         if not cur.fetchone():
             add_user(target_id, chat_id, target_username, target_first_name)
@@ -594,22 +549,18 @@ async def makeofficer_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cur.execute("UPDATE users SET username=?, first_name=? WHERE id=? AND chat_id=?", 
                        (target_username, target_first_name, target_id, chat_id))
             conn.commit()
-        
         if is_officer(target_id, chat_id):
             display_name = f"@{target_username}" if target_username else target_first_name
             await send_auto_delete(update, f"❌ {display_name} вже є офіцером")
             return ConversationHandler.END
-        
         set_role(target_id, chat_id, "officer")
         display_name = f"@{target_username}" if target_username else target_first_name
         await send_auto_delete(update, f"👑 {display_name} тепер офіцер гільдії!")
         return ConversationHandler.END
-    
     if context.args:
         target = context.args[0]
         return await process_makeofficer(update, context, target)
-    
-    await send_auto_delete_md(update, 
+    await send_auto_delete_md(update,
         "👑 Щоб призначити офіцера:\n"
         "1️⃣ Дайте **відповідь на повідомлення** гравця командою /makeofficer\n"
         "2️⃣ Або напишіть /makeofficer @username\n\n"
@@ -620,40 +571,26 @@ async def makeofficer_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def process_makeofficer(update: Update, context: ContextTypes.DEFAULT_TYPE, target=None):
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
-    
     if target is None:
         target = update.message.text.strip()
-    
     username = target.replace("@", "").strip()
-    
-    cur.execute(
-        "SELECT id, username, first_name FROM users WHERE chat_id=? AND LOWER(username) = LOWER(?)",
-        (chat_id, username)
-    )
+    cur.execute("SELECT id, username, first_name FROM users WHERE chat_id=? AND LOWER(username) = LOWER(?)", (chat_id, username))
     found = cur.fetchone()
-    
     if not found:
-        cur.execute(
-            "SELECT id, username, first_name FROM users WHERE chat_id=? AND LOWER(username) LIKE LOWER(?)",
-            (chat_id, f"%{username}%")
-        )
+        cur.execute("SELECT id, username, first_name FROM users WHERE chat_id=? AND LOWER(username) LIKE LOWER(?)", (chat_id, f"%{username}%"))
         found = cur.fetchone()
-    
     if not found:
-        await send_auto_delete_md(update, 
+        await send_auto_delete_md(update,
             f"❌ @{username} не знайдено в базі.\n\n"
             "💡 **Найпростіший спосіб:** дайте відповідь на повідомлення гравця командою /makeofficer\n\n"
             "Або нехай гравець зареєструється: /register"
         )
         return WAITING_MAKEOFFICER
-    
     target_id, target_username, target_first_name = found
-    
     if is_officer(target_id, chat_id):
         display_name = f"@{target_username}" if target_username else target_first_name
         await send_auto_delete(update, f"❌ {display_name} вже є офіцером")
         return ConversationHandler.END
-    
     set_role(target_id, chat_id, "officer")
     display_name = f"@{target_username}" if target_username else target_first_name
     await send_auto_delete(update, f"👑 {display_name} тепер офіцер гільдії!")
@@ -665,6 +602,32 @@ async def removeofficer_start(update: Update, context: ContextTypes.DEFAULT_TYPE
     
     if not is_officer(user_id, chat_id):
         await send_auto_delete(update, get_text(user_id, chat_id, 'only_officer'))
+        return ConversationHandler.END
+    
+    # Якщо це відповідь на повідомлення — одразу знімаємо
+    if update.message.reply_to_message:
+        target_user = update.message.reply_to_message.from_user
+        target_id = target_user.id
+        target_username = target_user.username or ""
+        target_first_name = target_user.first_name or ""
+        
+        if not is_officer(target_id, chat_id):
+            display_name = f"@{target_username}" if target_username else target_first_name
+            await send_auto_delete(update, f"❌ {display_name} не є офіцером")
+            return ConversationHandler.END
+        
+        if target_id == user_id:
+            await send_auto_delete(update, get_text(user_id, chat_id, 'removeofficer_self'))
+            return ConversationHandler.END
+        
+        officers = get_role_users(chat_id, "officer")
+        if len(officers) <= 1:
+            await send_auto_delete(update, get_text(user_id, chat_id, 'removeofficer_last'))
+            return ConversationHandler.END
+        
+        set_role(target_id, chat_id, "player")
+        display_name = f"@{target_username}" if target_username else target_first_name
+        await send_auto_delete(update, f"👤 {display_name} більше не офіцер")
         return ConversationHandler.END
     
     if context.args:
@@ -683,14 +646,15 @@ async def process_removeofficer(update: Update, context: ContextTypes.DEFAULT_TY
     
     username = target.replace("@", "").strip()
     
+    # Шукаємо офіцера
     cur.execute(
-        "SELECT id, username, first_name FROM users WHERE chat_id=? AND role='officer' AND (LOWER(username) = LOWER(?) OR LOWER(first_name) LIKE LOWER(?))",
+        "SELECT id, username, first_name FROM users WHERE chat_id=? AND role='officer' AND (LOWER(username) = LOWER(?) OR LOWER(username) LIKE LOWER(?))",
         (chat_id, username, f"%{username}%")
     )
     found = cur.fetchone()
     
     if not found:
-        await send_auto_delete_md(update, f"❌ Офіцера @{username} не знайдено")
+        await send_auto_delete(update, f"❌ Офіцера @{username} не знайдено в базі.\n\nПеревірте username або дайте відповідь на повідомлення офіцера командою /removeofficer")
         return WAITING_REMOVEOFFICER
     
     target_id, target_username, target_first_name = found
@@ -701,27 +665,24 @@ async def process_removeofficer(update: Update, context: ContextTypes.DEFAULT_TY
         return WAITING_REMOVEOFFICER
     
     officers = get_role_users(chat_id, "officer")
-    if len(officers) == 1:
+    if len(officers) <= 1:
         await send_auto_delete(update, get_text(user_id, chat_id, 'removeofficer_last'))
         return ConversationHandler.END
     
     set_role(target_id, chat_id, "player")
-    await send_auto_delete_md(update, get_text(user_id, chat_id, 'removeofficer_success', user=display_name))
+    await send_auto_delete(update, f"👤 {display_name} більше не офіцер")
     return ConversationHandler.END
 
 async def remove_user_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     chat_id = update.effective_chat.id
-    
     if not is_officer(user_id, chat_id):
         await send_auto_delete(update, get_text(user_id, chat_id, 'only_officer'))
         return ConversationHandler.END
-    
     if context.args:
         target = context.args[0]
         return await process_remove_user(update, context, target)
-    
-    await send_auto_delete(update, 
+    await send_auto_delete(update,
         "👤 Надішли @username гравця, якого треба видалити з бази:\n"
         "/remove @username\n\n"
         "/cancel - скасувати"
@@ -731,32 +692,24 @@ async def remove_user_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def process_remove_user(update: Update, context: ContextTypes.DEFAULT_TYPE, target=None):
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
-    
     if target is None:
         target = update.message.text.strip()
-    
     username = target.replace("@", "").strip()
-    
     cur.execute(
         "SELECT id, username, first_name FROM users WHERE chat_id=? AND (LOWER(username) = LOWER(?) OR LOWER(first_name) LIKE LOWER(?))",
         (chat_id, username, f"%{username}%")
     )
     found = cur.fetchone()
-    
     if not found:
         await send_auto_delete(update, f"❌ Гравця @{username} не знайдено в базі")
         return WAITING_REMOVE
-    
     target_id, target_username, target_first_name = found
     display_name = f"@{target_username}" if target_username else target_first_name
-    
     if is_officer(target_id, chat_id):
         await send_auto_delete(update, f"❌ Не можна видалити офіцера. Спочатку зніми його через /removeofficer")
         return ConversationHandler.END
-    
     cur.execute("DELETE FROM users WHERE id=? AND chat_id=?", (target_id, chat_id))
     conn.commit()
-    
     await send_auto_delete(update, f"✅ Гравця {display_name} видалено з бази гільдії!")
     return ConversationHandler.END
 
@@ -868,10 +821,7 @@ def main():
 
     schedule_reminder()
     logger.info("✅ Бот запущений! Готовий працювати в багатьох групах.")
-    
-    # Встановлюємо команди при старті
     loop.run_until_complete(setup_commands(app))
-    
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
