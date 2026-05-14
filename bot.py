@@ -96,8 +96,8 @@ async def setup_commands(app: Application):
         BotCommand("members", "Список гравців"),
         BotCommand("init", "Стати першим офіцером"),
         BotCommand("raid", "Рейд (позначити всіх)"),
-        BotCommand("tw", "Territory War"),
-        BotCommand("tb", "Territory Battle"),
+        BotCommand("vg", "Війна гільдій"),
+        BotCommand("vi", "Восход імперії"),
         BotCommand("all", "Покликати всіх"),
         BotCommand("energy", "Нагадати про енергію"),
         BotCommand("makeofficer", "Призначити офіцера"),
@@ -122,8 +122,8 @@ TEXTS = {
                  "👑 КОМАНДИ ОФІЦЕРІВ:\n"
                  "/init - стати першим офіцером\n"
                  "/raid - рейд (з позначкою всіх)\n"
-                 "/tw - Territory War (з позначкою всіх)\n"
-                 "/tb - Territory Battle (з позначкою всіх)\n"
+                 "/vg - Війна гільдій (з позначкою всіх)\n"
+                 "/vi - Восход імперії (з позначкою всіх)\n"
                  "/all - всіх покликати\n"
                  "/energy - нагадати про енергію (з позначкою всіх)\n"
                  "/makeofficer @user - призначити офіцера\n"
@@ -143,8 +143,8 @@ TEXTS = {
         'not_registered': "❌ Спочатку /register",
         'only_officer': "❌ Тільки офіцери можуть використовувати цю команду",
         'raid': "🚨 РЕЙД ПОЧАВСЯ!\n",
-        'tw': "⚔️ TERRITORY WAR!\n",
-        'tb': "🌌 TERRITORY BATTLE!\n",
+        'vg': "⚔️ ВІЙНА ГІЛЬДІЙ!\n",
+        'vi': "🌌 ВОСХОД ІМПЕРІЇ!\n",
         'all': "🔥 УВАГА ГІЛЬДІЇ!\n",
         'energy': "⚠️ Увага!\nНе забуваємо сдати енку!!!\n",
         'no_officers': "ℹ️ Немає призначених офіцерів. Використай /init, щоб стати першим.",
@@ -179,8 +179,8 @@ TEXTS = {
                  "👑 КОМАНДЫ ОФИЦЕРОВ:\n"
                  "/init - стать первым офицером\n"
                  "/raid - рейд (с отметкой всех)\n"
-                 "/tw - Territory War (с отметкой всех)\n"
-                 "/tb - Territory Battle (с отметкой всех)\n"
+                 "/vg - Война гильдий (с отметкой всех)\n"
+                 "/vi - Восход империи (с отметкой всех)\n"
                  "/all - призвать всех\n"
                  "/energy - напомнить об энергии (с отметкой всех)\n"
                  "/makeofficer @user - назначить офицера\n"
@@ -200,8 +200,8 @@ TEXTS = {
         'not_registered': "❌ Сначала /register",
         'only_officer': "❌ Только офицеры могут использовать эту команду",
         'raid': "🚨 РЕЙД НАЧАЛСЯ!\n",
-        'tw': "⚔️ TERRITORY WAR!\n",
-        'tb': "🌌 TERRITORY BATTLE!\n",
+        'vg': "⚔️ ВОЙНА ГИЛЬДИЙ!\n",
+        'vi': "🌌 ВОСХОД ИМПЕРИИ!\n",
         'all': "🔥 ВНИМАНИЕ ГИЛЬДИИ!\n",
         'energy': "⚠️ Внимание!\nНе забываем сдать энку!!!\n",
         'no_officers': "ℹ️ Нет назначенных офицеров. Используй /init, чтобы стать первым.",
@@ -480,22 +480,22 @@ async def raid(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = await mention_all(chat_id, get_text(user_id, chat_id, 'raid'), "⚔️")
     await send_auto_delete_html(update, text)
 
-async def tw(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def vg(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
     if not is_officer(user_id, chat_id):
         await send_auto_delete(update, get_text(user_id, chat_id, 'only_officer'))
         return
-    text = await mention_all(chat_id, get_text(user_id, chat_id, 'tw'), "⚔️")
+    text = await mention_all(chat_id, get_text(user_id, chat_id, 'vg'), "⚔️")
     await send_auto_delete_html(update, text)
 
-async def tb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def vi(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user_id = update.effective_user.id
     if not is_officer(user_id, chat_id):
         await send_auto_delete(update, get_text(user_id, chat_id, 'only_officer'))
         return
-    text = await mention_all(chat_id, get_text(user_id, chat_id, 'tb'), "🌌")
+    text = await mention_all(chat_id, get_text(user_id, chat_id, 'vi'), "🌌")
     await send_auto_delete_html(update, text)
 
 async def all_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -604,7 +604,6 @@ async def removeofficer_start(update: Update, context: ContextTypes.DEFAULT_TYPE
         await send_auto_delete(update, get_text(user_id, chat_id, 'only_officer'))
         return ConversationHandler.END
     
-    # Якщо це відповідь на повідомлення — одразу знімаємо
     if update.message.reply_to_message:
         target_user = update.message.reply_to_message.from_user
         target_id = target_user.id
@@ -646,7 +645,6 @@ async def process_removeofficer(update: Update, context: ContextTypes.DEFAULT_TY
     
     username = target.replace("@", "").strip()
     
-    # Шукаємо офіцера
     cur.execute(
         "SELECT id, username, first_name FROM users WHERE chat_id=? AND role='officer' AND (LOWER(username) = LOWER(?) OR LOWER(username) LIKE LOWER(?))",
         (chat_id, username, f"%{username}%")
@@ -812,8 +810,8 @@ def main():
     app.add_handler(CommandHandler("register", register))
     app.add_handler(CommandHandler("members", members))
     app.add_handler(CommandHandler("raid", raid))
-    app.add_handler(CommandHandler("tw", tw))
-    app.add_handler(CommandHandler("tb", tb))
+    app.add_handler(CommandHandler("vg", vg))
+    app.add_handler(CommandHandler("vi", vi))
     app.add_handler(CommandHandler("all", all_users))
     app.add_handler(CommandHandler("energy", energy))
     app.add_handler(CommandHandler("stats", stats))
