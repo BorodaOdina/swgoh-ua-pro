@@ -468,7 +468,19 @@ async def mention_all(chat_id, title, emoji):
     users = get_all_users(chat_id)
     if not users:
         return "❌ Немає зареєстрованих гравців"
-    mentions = [f"<a href='tg://user?id={u}'>{emoji}</a>" for u in users[:50]]
+    
+    # Отримуємо список всіх гравців з username
+    mentions = []
+    for uid in users[:50]:
+        cur.execute("SELECT username, first_name FROM users WHERE id=? AND chat_id=?", (uid, chat_id))
+        row = cur.fetchone()
+        if row:
+            username, first_name = row
+            if username:
+                mentions.append(f"@{username}")
+            else:
+                mentions.append(f"<a href='tg://user?id={uid}'>{first_name or 'Гравець'}</a>")
+    
     return title + " ".join(mentions)
 
 async def raid(update: Update, context: ContextTypes.DEFAULT_TYPE):
